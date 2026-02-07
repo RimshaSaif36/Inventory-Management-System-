@@ -2,26 +2,26 @@
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
 
 html,
 body {
-  height: 100%;
-  width: 100%;
-  font-size: 14px;
-  background-color: #6b7280;
-  color: #111827;
+    height: 100%;
+    width: 100%;
+    font-size: 14px;
+    background-color: #6b7280;
+    color: #111827;
 }
 
 @media (min-width: 768px) {
-  .custom-grid-rows {
-    grid-template-rows: repeat(8, 20vh);
-  }
+    .custom-grid-rows {
+        grid-template-rows: repeat(8, 20vh);
+    }
 }
 
 @media (min-width: 1280px) {
-  .custom-grid-rows {
-    grid-template-rows: repeat(8, 7.5vh);
-  }
+    .custom-grid-rows {
+        grid-template-rows: repeat(8, 7.5vh);
+    }
 }

@@ -1,7 +1,45 @@
+# Dependencies
 client/node_modules/
 server/node_modules/
+node_modules/
+
+# Build outputs
 client/dist/
 server/dist/
-client/.env/
-server/.env/
 client/.next/
+client/out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+client/.env*
+server/.env*
+!client/.env.example
+!server/.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary files
+.tmp/
+temp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

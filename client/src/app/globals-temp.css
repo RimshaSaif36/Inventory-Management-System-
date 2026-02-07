@@ -1,8 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Basic styles */
+/* Basic CSS without Tailwind directives for testing */
 *,
 *::before,
 *::after {
@@ -10,9 +6,7 @@
 }
 
 html,
-body,
-#root,
-.app {
+body {
   height: 100%;
   width: 100%;
   font-size: 14px;

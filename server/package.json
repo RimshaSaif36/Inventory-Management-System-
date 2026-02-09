@@ -18,14 +18,18 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^5.16.2",
+    "@types/multer": "^2.0.0",
     "body-parser": "^1.20.2",
+    "cloudinary": "^2.9.0",
     "concurrently": "^8.2.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
-    "prisma": "^5.16.2"
+    "multer": "^2.0.2",
+    "prisma": "^5.16.2",
+    "react-dropzone": "^14.4.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

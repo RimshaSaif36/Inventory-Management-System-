@@ -19,12 +19,47 @@ model Users {
   email  String
 }
 
+model Brand {
+  brandId     String     @id
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  Categories  Category[]
+}
+
+model Category {
+  categoryId  String  @id
+  name        String
+  description String?
+  brandId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  brand       Brand    @relation(fields: [brandId], references: [brandId])
+  Models      Model[]
+}
+
+model Model {
+  modelId     String     @id
+  name        String
+  description String?
+  categoryId  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  category    Category   @relation(fields: [categoryId], references: [categoryId])
+  Products    Products[]
+}
+
 model Products {
   productId     String      @id
   name          String
   price         Float
   rating        Float?
   stockQuantity Int
+  modelId       String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  model         Model       @relation(fields: [modelId], references: [modelId])
   Sales         Sales[]
   Purchases     Purchases[]
 }

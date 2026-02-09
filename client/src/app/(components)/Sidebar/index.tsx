@@ -11,6 +11,9 @@ import {
   Menu,
   SlidersHorizontal,
   User,
+  Tag,
+  FolderTree,
+  Box,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -111,6 +114,24 @@ const Sidebar = () => {
           href="/inventory"
           icon={Archive}
           label="Inventory"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/brands"
+          icon={Tag}
+          label="Brands"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/categories"
+          icon={FolderTree}
+          label="Categories"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/models"
+          icon={Box}
+          label="Models"
           isCollapsed={isSidebarCollapsed}
         />
         <SidebarLink

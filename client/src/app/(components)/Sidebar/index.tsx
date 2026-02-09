@@ -82,19 +82,20 @@ const Sidebar = () => {
         }`}
       >
         <Image
-          src="https://s3-inventorymanagement.s3.us-east-2.amazonaws.com/logo.png"
-          alt="edstock-logo"
-          width={27}
-          height={27}
-          className="rounded w-8"
+          src="/logo.jpg"
+          alt="khtab-engineering-logo"
+          width={150}
+          height={127}
+          className="rounded "
         />
         <h1
-          className={`${
-            isSidebarCollapsed ? "hidden" : "block"
-          } font-extrabold text-2xl`}
-        >
-          EDSTOCK
-        </h1>
+  className={`${
+    isSidebarCollapsed ? "hidden" : "block"
+  } font-extrabold whitespace-nowrap`}
+>
+  
+</h1>
+
 
         <button
           className="md:hidden px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100"
@@ -146,7 +147,7 @@ const Sidebar = () => {
 
       {/* FOOTER */}
       <div className={`${isSidebarCollapsed ? "hidden" : "block"} mb-10`}>
-        <p className="text-center text-xs text-gray-500">&copy; 2024 Edstock</p>
+        <p className="text-center text-xs text-gray-500">&copy; 2026 Khtab Engineering and Services</p>
       </div>
     </div>
   );

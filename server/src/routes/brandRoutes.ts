@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { 
-  createBrand, 
-  getBrands, 
-  getBrandById, 
-  updateBrand, 
-  deleteBrand 
+import {
+    createBrand,
+    getBrands,
+    getBrandById,
+    updateBrand,
+    deleteBrand
 } from "../controllers/brandController";
 
 const router = Router();

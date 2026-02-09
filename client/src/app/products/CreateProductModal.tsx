@@ -68,7 +68,7 @@ const CreateProductModal = ({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!formData.modelId) {
       alert("Please select a model");
       return;

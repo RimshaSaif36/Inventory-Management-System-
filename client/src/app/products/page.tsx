@@ -122,9 +122,8 @@ const Products = () => {
             >
               <div className="flex flex-col items-center">
                 <Image
-                  src={`https://s3-inventorymanagement.s3.us-east-2.amazonaws.com/product${
-                    Math.floor(Math.random() * 3) + 1
-                  }.png`}
+                  src={`https://s3-inventorymanagement.s3.us-east-2.amazonaws.com/product${Math.floor(Math.random() * 3) + 1
+                    }.png`}
                   alt={product.name}
                   width={150}
                   height={150}
@@ -133,12 +132,12 @@ const Products = () => {
                 <h3 className="text-lg text-gray-900 font-semibold">
                   {product.name}
                 </h3>
-                
+
                 {/* Hierarchy display */}
                 <div className="text-xs text-gray-400 text-center mb-2">
                   {product.model?.category?.brand?.name} → {product.model?.category?.name} → {product.model?.name}
                 </div>
-                
+
                 <p className="text-gray-800">${product.price.toFixed(2)}</p>
                 <div className="text-sm text-gray-600 mt-1">
                   Stock: {product.stockQuantity}
@@ -148,7 +147,7 @@ const Products = () => {
                     <Rating rating={product.rating} />
                   </div>
                 )}
-                
+
                 {/* Action buttons */}
                 <div className="flex space-x-2 mt-3">
                   <button

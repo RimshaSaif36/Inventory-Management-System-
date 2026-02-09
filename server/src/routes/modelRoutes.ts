@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { 
-  createModel, 
-  getModels, 
-  getModelById, 
-  updateModel, 
-  deleteModel 
+import {
+    createModel,
+    getModels,
+    getModelById,
+    updateModel,
+    deleteModel
 } from "../controllers/modelController";
 
 const router = Router();

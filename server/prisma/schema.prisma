@@ -3,46 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
-//////////////////////////////////////////////////////
-// ENUMS
-//////////////////////////////////////////////////////
-
-enum Role {
-  ADMIN
-  ACCOUNTANT
-}
-
-enum SaleType {
-  POS
-  SALES_ORDER
-}
-
-enum OrderStatus {
-  PENDING
-  APPROVED
-  DELIVERED
-  CANCELLED
-  INVOICED
-}
-
-enum PaymentMethod {
-  CASH
-  CARD
-  TRANSFER
-  CREDIT
-}
-
-enum StockMovementType {
-  PURCHASE
-  POS_SALE
-  SALES_ORDER_RESERVE
-  SALES_ORDER_DEDUCT
-  MANUAL_ADJUSTMENT
 }
 
 //////////////////////////////////////////////////////
@@ -53,7 +15,7 @@ model User {
   id      String  @id
   name    String
   email   String  @unique
-  role    Role
+  role    String
   storeId String?
   store   Store?  @relation(fields: [storeId], references: [id])
 
@@ -130,6 +92,10 @@ model Product {
   purchaseItems PurchaseItem[]
 
   createdAt DateTime @default(now())
+
+  @@index([name])
+  @@index([seriesId])
+  @@index([brandId])
 }
 
 //////////////////////////////////////////////////////
@@ -154,12 +120,12 @@ model Stock {
 }
 
 model StockMovement {
-  id          String            @id @default(uuid())
+  id          String   @id @default(uuid())
   stockId     String
-  type        StockMovementType
+  type        String
   quantity    Int
   referenceId String?
-  createdAt   DateTime          @default(now())
+  createdAt   DateTime @default(now())
 
   stock Stock @relation(fields: [stockId], references: [id])
 }
@@ -243,13 +209,13 @@ model Employee {
 //////////////////////////////////////////////////////
 
 model Sale {
-  id            String        @id @default(uuid())
+  id            String   @id @default(uuid())
   storeId       String
   userId        String
   customerId    String?
   totalAmount   Float
-  paymentMethod PaymentMethod
-  createdAt     DateTime      @default(now())
+  paymentMethod String
+  createdAt     DateTime @default(now())
 
   store    Store     @relation(fields: [storeId], references: [id])
   user     User      @relation(fields: [userId], references: [id])
@@ -257,6 +223,10 @@ model Sale {
 
   items   SaleItem[]
   invoice Invoice?
+
+  @@index([storeId])
+  @@index([customerId])
+  @@index([createdAt])
 }
 
 model SaleItem {
@@ -276,13 +246,13 @@ model SaleItem {
 //////////////////////////////////////////////////////
 
 model SalesOrder {
-  id               String      @id @default(uuid())
+  id               String   @id @default(uuid())
   storeId          String
   userId           String
   customerId       String
-  orderDate        DateTime    @default(now())
+  orderDate        DateTime @default(now())
   expectedDelivery DateTime?
-  status           OrderStatus
+  status           String
   totalAmount      Float
 
   store    Store    @relation(fields: [storeId], references: [id])
@@ -310,13 +280,13 @@ model SalesOrderItem {
 //////////////////////////////////////////////////////
 
 model Invoice {
-  id            String         @id @default(uuid())
+  id            String   @id @default(uuid())
   storeId       String
-  saleId        String?        @unique
-  salesOrderId  String?        @unique
+  saleId        String?  @unique
+  salesOrderId  String?  @unique
   totalAmount   Float
-  paymentMethod PaymentMethod?
-  createdAt     DateTime       @default(now())
+  paymentMethod String?
+  createdAt     DateTime @default(now())
 
   store      Store       @relation(fields: [storeId], references: [id])
   sale       Sale?       @relation(fields: [saleId], references: [id])

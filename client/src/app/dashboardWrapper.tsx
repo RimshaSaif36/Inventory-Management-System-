@@ -31,16 +31,18 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       }
       origConsoleError.apply(console, args);
     };
-    return () => {
-      console.error = origConsoleError;
-    };
 
+    // Apply dark mode class
     if (isDarkMode) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.add("light");
     }
-  });
+
+    return () => {
+      console.error = origConsoleError;
+    };
+  }, [isDarkMode]);
 
   return (
     <div
@@ -65,6 +67,7 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const currentUser = useAppSelector((state) => state.user?.currentUser);
 
   // Public routes that don't require authentication
   const publicRoutes = ["/auth/login", "/auth/register", "/auth/reset-password"];
@@ -73,6 +76,13 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     (async () => {
       try {
+        // Prefer Redux user state if available (it's hydrated from localStorage)
+        if (currentUser) {
+          setIsAuthenticated(true);
+          return;
+        }
+
+        // Fallback to Supabase session check
         const session = await getSession();
         setIsAuthenticated(!!session);
 
@@ -88,7 +98,7 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
         }
       }
     })();
-  }, [pathname, router, isPublicRoute]);
+  }, [pathname, router, isPublicRoute, currentUser]);
 
   // Show nothing while checking authentication
   if (isAuthenticated === null) {

@@ -1,0 +1,43 @@
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: "ADMIN" | "ACCOUNTANT";
+  storeId?: string;
+}
+
+export interface UserState {
+  currentUser: User | null;
+  isAuthenticated: boolean;
+}
+
+const initialState: UserState = {
+  currentUser: null,
+  isAuthenticated: false,
+};
+
+export const userSlice = createSlice({
+  name: "user",
+  initialState,
+  reducers: {
+    setUser: (state, action: PayloadAction<User>) => {
+      state.currentUser = action.payload;
+      state.isAuthenticated = true;
+    },
+    clearUser: (state) => {
+      state.currentUser = null;
+      state.isAuthenticated = false;
+    },
+    updateUserRole: (state, action: PayloadAction<"ADMIN" | "ACCOUNTANT">) => {
+      if (state.currentUser) {
+        state.currentUser.role = action.payload;
+      }
+    },
+  },
+});
+
+export const { setUser, clearUser, updateUserRole } = userSlice.actions;
+
+export default userSlice.reducer;

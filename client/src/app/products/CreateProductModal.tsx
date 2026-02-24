@@ -31,6 +31,7 @@ const CreateProductModal = ({
     seriesId: "",
     imageFile: null,
   });
+  const [error, setError] = useState<string>("");
 
   const { data: series } = useGetSeriesQuery(undefined);
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
@@ -71,17 +72,40 @@ const CreateProductModal = ({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError("");
 
     if (!formData.seriesId) {
-      alert("Please select a series");
+      setError("Please select a series");
       return;
     }
 
     try {
       if (product) {
+        // For updates, build data without imageFile (File objects can't be sent as JSON)
+        const updateData: Partial<ProductFormData> = {
+          name: formData.name,
+          purchasePrice: formData.purchasePrice,
+          sellingPrice: formData.sellingPrice,
+          seriesId: formData.seriesId,
+        };
+
+        // If a new image file was selected, upload it first
+        if (formData.imageFile) {
+          const uploadForm = new FormData();
+          uploadForm.append("image", formData.imageFile);
+          const resp = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/products/upload`, {
+            method: "POST",
+            body: uploadForm,
+          });
+          const json = await resp.json();
+          if (json?.url) {
+            updateData.imageUrl = json.url;
+          }
+        }
+
         await updateProduct({
-          productId: product.productId,
-          data: formData,
+          productId: product.id,
+          data: updateData,
         }).unwrap();
       } else {
         // If an image file is selected, upload it first
@@ -103,8 +127,20 @@ const CreateProductModal = ({
         }
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
+      let errorMessage = "Failed to save product";
+      
+      // Try to extract the most relevant error message
+      if (error?.data?.message) {
+        errorMessage = error.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+      
       console.error("Failed to save product:", error);
+      setError(errorMessage);
     }
   };
 
@@ -128,6 +164,11 @@ const CreateProductModal = ({
         <h3 className="text-lg font-bold text-gray-900 mb-4">
           {product ? "Edit Product" : "Create New Product"}
         </h3>
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           {/* PRODUCT NAME */}
           <label htmlFor="productName" className={labelCssStyles}>

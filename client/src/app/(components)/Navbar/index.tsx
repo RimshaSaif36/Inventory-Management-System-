@@ -2,6 +2,7 @@
 
 import { useAppDispatch, useAppSelector } from "@/app/redux";
 import { setIsDarkMode, setIsSidebarCollapsed } from "@/state";
+import { clearUser } from "@/state/userSlice";
 import { Bell, Menu, Moon, Settings, Sun, LogOut } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,6 +31,8 @@ const Navbar = () => {
     setIsLoggingOut(true);
     try {
       await logout();
+      dispatch(clearUser());
+      localStorage.removeItem("persist:root");
       router.push("/auth/login");
     } catch (error) {
       console.error("Logout failed:", error);

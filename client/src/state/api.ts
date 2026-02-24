@@ -1,5 +1,13 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
+export interface PaginationResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface Brand {
   id: string;
   name: string;
@@ -227,7 +235,7 @@ export const api = createApi({
       invalidatesTags: ["Series"],
     }),
     // Product endpoints
-    getProducts: build.query<Product[], { search?: string; seriesId?: string } | undefined>({
+    getProducts: build.query<PaginationResponse<Product>, { search?: string; seriesId?: string; page?: number; pageSize?: number } | undefined>({
       query: (params) => ({
         url: "/products",
         params: params || undefined,
@@ -242,7 +250,7 @@ export const api = createApi({
       query: (newProduct) => ({
         url: "/products",
         method: "POST",
-        body: { productId: crypto.randomUUID(), ...newProduct },
+        body: newProduct,
       }),
       invalidatesTags: ["Products"],
     }),

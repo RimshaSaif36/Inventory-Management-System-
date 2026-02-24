@@ -14,6 +14,12 @@ import {
   Tag,
   FolderTree,
   Box,
+  Truck,
+  Users,
+  ShoppingCart,
+  FileText,
+  Package,
+  BarChart3,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -103,17 +109,25 @@ const Sidebar = () => {
       </div>
 
       {/* LINKS */}
-      <div className="flex-grow mt-8">
+      <div className="flex-grow mt-8 overflow-y-auto">
         <SidebarLink
           href="/dashboard"
           icon={Layout}
           label="Dashboard"
           isCollapsed={isSidebarCollapsed}
         />
+        
+        {/* Inventory Management Section */}
         <SidebarLink
           href="/inventory"
           icon={Archive}
           label="Inventory"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/products"
+          icon={Box}
+          label="Products"
           isCollapsed={isSidebarCollapsed}
         />
         <SidebarLink
@@ -130,16 +144,80 @@ const Sidebar = () => {
         />
         <SidebarLink
           href="/series"
-          icon={Box}
+          icon={Package}
           label="Models"
           isCollapsed={isSidebarCollapsed}
         />
         <SidebarLink
-          href="/products"
-          icon={Clipboard}
-          label="Products"
+          href="/stock"
+          icon={Archive}
+          label="Stock"
           isCollapsed={isSidebarCollapsed}
         />
+
+        {/* Sales Section */}
+        <SidebarLink
+          href="/sales"
+          icon={ShoppingCart}
+          label="POS Sales"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/sales-orders"
+          icon={Clipboard}
+          label="Sales Orders"
+          isCollapsed={isSidebarCollapsed}
+        />
+
+        {/* Purchase & Supplier Section */}
+        <SidebarLink
+          href="/suppliers"
+          icon={Truck}
+          label="Suppliers"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/purchases"
+          icon={Package}
+          label="Purchases"
+          isCollapsed={isSidebarCollapsed}
+        />
+
+        {/* Customer & Employee Section */}
+        <SidebarLink
+          href="/customers"
+          icon={Users}
+          label="Customers"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/employees"
+          icon={User}
+          label="Employees"
+          isCollapsed={isSidebarCollapsed}
+        />
+
+        {/* Financial Section */}
+        <SidebarLink
+          href="/invoices"
+          icon={FileText}
+          label="Invoices"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/reports"
+          icon={BarChart3}
+          label="Reports"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/expenses"
+          icon={CircleDollarSign}
+          label="Expenses"
+          isCollapsed={isSidebarCollapsed}
+        />
+
+        {/* Management Section */}
         <SidebarLink
           href="/users"
           icon={User}
@@ -150,12 +228,6 @@ const Sidebar = () => {
           href="/settings"
           icon={SlidersHorizontal}
           label="Settings"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/expenses"
-          icon={CircleDollarSign}
-          label="Expenses"
           isCollapsed={isSidebarCollapsed}
         />
       </div>

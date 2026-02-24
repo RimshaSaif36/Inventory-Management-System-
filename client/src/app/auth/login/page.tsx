@@ -2,10 +2,14 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAppDispatch } from "@/app/redux";
+import { setUser } from "@/state/userSlice";
 import { login, resetPassword } from "@/lib/authService";
+import { apiClient } from "@/lib/apiClient";
 
 const LoginPage = () => {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,12 +23,33 @@ const LoginPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await login(email, password);
-      if (error) {
-        setError(error.message || "Login failed");
+      const { data, error: authError } = await login(email, password);
+      if (authError) {
+        setError(authError.message || "Login failed");
       } else if (data.session) {
-        // successful
-        router.push("/");
+        // Successful auth with Supabase, now fetch user data from backend
+        try {
+          const response = await apiClient.get("/users/me", {
+            headers: {
+              "Authorization": `Bearer ${data.session.access_token}`,
+            },
+          });
+          
+          const userData = response.data.data || response.data;
+          
+          dispatch(setUser({
+            id: userData.id,
+            name: userData.name || "",
+            email: userData.email,
+            role: userData.role || "ACCOUNTANT",
+            storeId: userData.storeId,
+          }));
+          
+          router.push("/");
+        } catch (err: any) {
+          console.error("Failed to fetch user data:", err);
+          setError("Failed to load user profile");
+        }
       } else {
         setError("Login failed");
       }

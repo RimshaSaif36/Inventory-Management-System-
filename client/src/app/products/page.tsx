@@ -18,14 +18,20 @@ type ProductFormData = {
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSeriesId, setSelectedSeriesId] = useState("");
+  const [page, setPage] = useState<number>(1);
+  const [pageSize] = useState<number>(20);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
 
   const {
-    data: products,
+    data: productsResponse,
     isLoading,
     isError,
-  } = useGetProductsQuery({ search: searchTerm, seriesId: selectedSeriesId });
+  } = useGetProductsQuery({ search: searchTerm, seriesId: selectedSeriesId, page, pageSize });
+
+  const products = productsResponse?.data || [];
+  const total = productsResponse?.total || 0;
+  const totalPages = productsResponse?.totalPages || 1;
 
   const { data: series } = useGetSeriesQuery(undefined);
   const [createProduct] = useCreateProductMutation();
@@ -35,8 +41,15 @@ const Products = () => {
     try {
       await createProduct(productData).unwrap();
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
+      let errorMessage = "Failed to create product";
+      if (error?.data?.message) {
+        errorMessage = error.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
       console.error("Failed to create product:", error);
+      alert(errorMessage);
     }
   };
 
@@ -163,6 +176,14 @@ const Products = () => {
             </div>
           ))
         )}
+      </div>
+      {/* Pagination Controls */}
+      <div className="mt-6 flex items-center justify-between">
+        <div className="text-sm text-gray-600">Showing page {page} of {totalPages} — {total} items</div>
+        <div className="space-x-2">
+          <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">Prev</button>
+          <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">Next</button>
+        </div>
       </div>
 
       {/* MODAL */}

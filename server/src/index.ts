@@ -15,6 +15,15 @@ import expenseRoutes from "./routes/expenseRoutes";
 import brandRoutes from "./routes/brandRoutes";
 import categoryRoutes from "./routes/categoryRoutes";
 import seriesRoutes from "./routes/seriesRoutes";
+import supplierRoutes from "./routes/supplierRoutes";
+import purchaseRoutes from "./routes/purchaseRoutes";
+import customerRoutes from "./routes/customerRoutes";
+import employeeRoutes from "./routes/employeeRoutes";
+import saleRoutes from "./routes/saleRoutes";
+import salesOrderRoutes from "./routes/salesOrderRoutes";
+import invoiceRoutes from "./routes/invoiceRoutes";
+import stockRoutes from "./routes/stockRoutes";
+import reportRoutes from "./routes/reportRoutes";
 
 /* CONFIGURATIONS */
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
@@ -45,6 +54,15 @@ app.use("/expenses", expenseRoutes); // http://localhost:5000/expenses
 app.use("/brands", brandRoutes); // http://localhost:5000/brands
 app.use("/categories", categoryRoutes); // http://localhost:5000/categories
 app.use("/series", seriesRoutes); // http://localhost:5000/series
+app.use("/suppliers", supplierRoutes); // http://localhost:5000/suppliers
+app.use("/purchases", purchaseRoutes); // http://localhost:5000/purchases
+app.use("/customers", customerRoutes); // http://localhost:5000/customers
+app.use("/employees", employeeRoutes); // http://localhost:5000/employees
+app.use("/sales", saleRoutes); // http://localhost:5000/sales
+app.use("/sales-orders", salesOrderRoutes); // http://localhost:5000/sales-orders
+app.use("/invoices", invoiceRoutes); // http://localhost:5000/invoices
+app.use("/stock", stockRoutes); // http://localhost:5000/stock
+app.use("/reports", reportRoutes); // http://localhost:5000/reports
 
 /* ERROR HANDLING MIDDLEWARE */
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -76,6 +76,7 @@ model Series {
 
 model Product {
   id            String  @id @default(uuid())
+  sku           String? @unique
   name          String
   brandId       String?
   seriesId      String?

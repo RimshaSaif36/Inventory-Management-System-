@@ -58,6 +58,7 @@ export interface NewSeries {
 
 export interface Product {
   id: string;
+  sku?: string;
   name: string;
   brandId?: string;
   seriesId?: string;
@@ -68,15 +69,44 @@ export interface Product {
   updatedAt?: string;
   brand?: Brand;
   series?: Series;
+  totalStock?: number;
+  lowStockLevel?: number;
 }
 
 export interface NewProduct {
+  sku?: string;
   name: string;
   brandId?: string;
   seriesId: string;
   purchasePrice: number;
   sellingPrice: number;
   imageUrl?: string;
+}
+
+export interface Store {
+  id: string;
+  name: string;
+  location?: string;
+  createdAt?: string;
+}
+
+export interface Stock {
+  id: string;
+  storeId: string;
+  productId: string;
+  quantity: number;
+  reservedQty: number;
+  lowStockLevel: number;
+  updatedAt?: string;
+  product?: Product;
+  store?: Store;
+}
+
+export interface NewStock {
+  storeId: string;
+  productId: string;
+  quantity: number;
+  lowStockLevel?: number;
 }
 
 export interface SalesSummary {
@@ -123,7 +153,7 @@ export interface User {
 export const api = createApi({
   baseQuery: fetchBaseQuery({ baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL }),
   reducerPath: "api",
-  tagTypes: ["DashboardMetrics", "Products", "Users", "Expenses", "Brands", "Categories", "Series"],
+  tagTypes: ["DashboardMetrics", "Products", "Users", "Expenses", "Brands", "Categories", "Series", "Stock"],
   endpoints: (build) => ({
     getDashboardMetrics: build.query<DashboardMetrics, void>({
       query: () => "/dashboard",
@@ -269,6 +299,34 @@ export const api = createApi({
       }),
       invalidatesTags: ["Products"],
     }),
+    // Stock endpoints
+    getStockByStore: build.query<Stock[], { storeId: string; search?: string }>({
+      query: (params) => ({
+        url: "/stock",
+        params,
+      }),
+      providesTags: ["Stock"],
+    }),
+    getStockById: build.query<Stock, string>({
+      query: (id) => `/stock/${id}`,
+      providesTags: ["Stock"],
+    }),
+    createStock: build.mutation<Stock, NewStock>({
+      query: (newStock) => ({
+        url: "/stock",
+        method: "POST",
+        body: newStock,
+      }),
+      invalidatesTags: ["Stock"],
+    }),
+    updateStock: build.mutation<Stock, { id: string; data: Partial<{ quantity: number; lowStockLevel: number }> }>({
+      query: ({ id, data }) => ({
+        url: `/stock/${id}`,
+        method: "PUT",
+        body: data,
+      }),
+      invalidatesTags: ["Stock"],
+    }),
     // Existing endpoints
     getUsers: build.query<User[], void>({
       query: () => "/users",
@@ -307,6 +365,11 @@ export const {
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  // Stock hooks
+  useGetStockByStoreQuery,
+  useGetStockByIdQuery,
+  useCreateStockMutation,
+  useUpdateStockMutation,
   // Existing hooks
   useGetUsersQuery,
   useGetExpensesByCategoryQuery,

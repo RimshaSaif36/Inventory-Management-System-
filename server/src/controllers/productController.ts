@@ -12,15 +12,16 @@ export const getProducts = async (
     const pageSize = Math.min(100, parseInt(req.query.pageSize?.toString() || "50"));
     const skip = (page - 1) * pageSize;
 
-    const [products, total] = await Promise.all([
+    const [productsData, total] = await Promise.all([
       prisma.product.findMany({
         where: {
-          ...(search && { name: { contains: search, mode: "insensitive" } }),
+          ...(search && { name: { contains: search } }),
           ...(seriesId && { seriesId }),
         },
         include: { 
           brand: { select: { id: true, name: true } },
           series: { select: { id: true, name: true, category: { select: { id: true, name: true } } } },
+          stocks: true,
         },
         skip,
         take: pageSize,
@@ -28,11 +29,19 @@ export const getProducts = async (
       }),
       prisma.product.count({
         where: {
-          ...(search && { name: { contains: search, mode: "insensitive" } }),
+          ...(search && { name: { contains: search } }),
           ...(seriesId && { seriesId }),
         },
       }),
     ]);
+
+    // Calculate total stock for each product
+    const products = productsData.map((product: any) => ({
+      ...product,
+      totalStock: product.stocks.reduce((sum: number, stock: any) => sum + stock.quantity, 0),
+      lowStockLevel: product.stocks.length > 0 ? product.stocks[0].lowStockLevel : 0,
+    }));
+
     res.json({ data: products, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
   } catch (error) {
     console.error("getProducts error:", error);

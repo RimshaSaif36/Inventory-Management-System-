@@ -1,6 +1,74 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 
+export const createStock = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { storeId, productId, quantity, lowStockLevel } = req.body;
+
+    // Validate required fields
+    if (!storeId || !productId || quantity === undefined) {
+      res.status(400).json({ message: "Store ID, Product ID, and quantity are required" });
+      return;
+    }
+
+    // Check if product exists
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+
+    // Check if stock already exists for this store-product combo
+    const existingStock = await prisma.stock.findUnique({
+      where: {
+        storeId_productId: {
+          storeId,
+          productId,
+        },
+      },
+    });
+
+    if (existingStock) {
+      res.status(400).json({ message: "Stock entry already exists for this product in this store" });
+      return;
+    }
+
+    // Create stock entry
+    const stock = await prisma.stock.create({
+      data: {
+        storeId,
+        productId,
+        quantity: Number(quantity),
+        lowStockLevel: lowStockLevel ? Number(lowStockLevel) : 5,
+      },
+      include: {
+        product: { include: { brand: true, series: true } },
+        store: true,
+      },
+    });
+
+    // Record initial stock movement
+    await prisma.stockMovement.create({
+      data: {
+        stockId: stock.id,
+        type: "INITIAL",
+        quantity: Number(quantity),
+      },
+    });
+
+    res.status(201).json(stock);
+  } catch (error: any) {
+    console.error("createStock error:", error);
+    res.status(500).json({ message: error.message || "Error creating stock" });
+  }
+};
+
 export const getStockByStore = async (
   req: Request,
   res: Response
@@ -69,31 +137,35 @@ export const updateStock = async (
     const { id } = req.params;
     const { quantity, lowStockLevel } = req.body;
 
+    // Get old stock data before updating
+    const oldStock = await prisma.stock.findUnique({
+      where: { id },
+    });
+
+    if (!oldStock) {
+      res.status(404).json({ message: "Stock not found" });
+      return;
+    }
+
     const stock = await prisma.stock.update({
       where: { id },
       data: {
         ...(quantity !== undefined && { quantity }),
         ...(lowStockLevel !== undefined && { lowStockLevel }),
       },
-      include: { product: true },
+      include: { product: true, store: true },
     });
 
     // Record manual adjustment if quantity changed
-    if (quantity !== undefined) {
-      const oldStock = await prisma.stock.findUnique({
-        where: { id },
+    if (quantity !== undefined && quantity !== oldStock.quantity) {
+      const difference = quantity - oldStock.quantity;
+      await prisma.stockMovement.create({
+        data: {
+          stockId: id,
+          type: "MANUAL_ADJUSTMENT",
+          quantity: difference,
+        },
       });
-
-      if (oldStock) {
-        const difference = quantity - oldStock.quantity;
-        await prisma.stockMovement.create({
-          data: {
-            stockId: id,
-            type: "MANUAL_ADJUSTMENT",
-            quantity: difference,
-          },
-        });
-      }
     }
 
     res.json(stock);

@@ -15,6 +15,7 @@ router.get("/movement/history", adminOrAccountant, stockController.getStockMovem
 router.get("/:id", adminOrAccountant, stockController.getStockById);
 
 // WRITE operations - Accountant only
+router.post("/", accountantOnly, stockController.createStock);
 router.put("/:id", accountantOnly, stockController.updateStock);
 
 export default router;

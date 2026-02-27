@@ -148,12 +148,6 @@ const Sidebar = () => {
           label="Models"
           isCollapsed={isSidebarCollapsed}
         />
-        <SidebarLink
-          href="/stock"
-          icon={Archive}
-          label="Stock"
-          isCollapsed={isSidebarCollapsed}
-        />
 
         {/* Sales Section */}
         <SidebarLink

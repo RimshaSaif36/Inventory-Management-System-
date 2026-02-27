@@ -1,12 +1,12 @@
 "use client";
 
-import { 
-  useGetProductsQuery, 
+import {
+  useGetProductsQuery,
   useDeleteProductMutation,
   useUpdateProductMutation,
   useGetStockByStoreQuery,
   useCreateStockMutation,
-  useUpdateStockMutation 
+  useUpdateStockMutation
 } from "@/state/api";
 import Header from "@/app/(components)/Header";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
@@ -18,7 +18,7 @@ const Inventory = () => {
   const [deleteProduct] = useDeleteProductMutation();
   const [updateProduct] = useUpdateProductMutation();
   const [products, setProducts] = useState<any[]>([]);
-  
+
   // Stock Management States
   const user = useAppSelector((state) => state.user.currentUser);
   const storeId = user?.storeId || "";
@@ -54,9 +54,9 @@ const Inventory = () => {
 
   // Inventory columns
   const inventoryColumns: GridColDef<any>[] = [
-    { 
-      field: "imageUrl", 
-      headerName: "Image", 
+    {
+      field: "imageUrl",
+      headerName: "Image",
       width: 70,
       sortable: false,
       renderCell: (params) => (
@@ -71,9 +71,9 @@ const Inventory = () => {
         </div>
       ),
     },
-    { 
-      field: "name", 
-      headerName: "Item Name", 
+    {
+      field: "name",
+      headerName: "Item Name",
       width: 200,
       renderCell: (params) => (
         <div className="font-semibold text-gray-900 truncate">{params.row.name}</div>
@@ -104,7 +104,7 @@ const Inventory = () => {
       renderCell: (params) => {
         const qty = params.row.totalStock || 0;
         const lowLevel = params.row.lowStockLevel || 5;
-        
+
         if (qty === 0) {
           return <span className="font-bold text-red-600 text-base">{qty}kg</span>;
         } else if (qty < lowLevel) {
@@ -121,7 +121,7 @@ const Inventory = () => {
       renderCell: (params) => {
         const qty = params.row.totalStock || 0;
         const lowLevel = params.row.lowStockLevel || 5;
-        
+
         if (qty === 0) {
           return <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">Out of Stock</span>;
         } else if (qty < lowLevel) {
@@ -138,10 +138,10 @@ const Inventory = () => {
         const date = params.row.updatedAt ? new Date(params.row.updatedAt) : new Date();
         return (
           <div className="text-xs text-gray-600">
-            {date.toLocaleString("en-US", { 
-              month: "short", 
-              day: "numeric", 
-              year: "numeric", 
+            {date.toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
               hour: "2-digit",
               minute: "2-digit",
               hour12: true
@@ -158,32 +158,32 @@ const Inventory = () => {
       align: "center",
       renderCell: (params) => (
         <div className="flex gap-2 justify-center">
-          <button 
+          <button
             onClick={() => {
               setEditingProduct({ ...params.row, editQuantity: params.row.totalStock });
               setShowEditModal(true);
             }}
-            className="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-xs font-semibold transition" 
+            className="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg text-xs font-semibold transition"
             title="Edit"
           >
             Edit
           </button>
-          <button 
+          <button
             onClick={() => {
               setSelectedProduct(params.row);
               setShowDetailsModal(true);
             }}
-            className="px-3 py-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg text-xs font-semibold transition" 
+            className="px-3 py-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg text-xs font-semibold transition"
             title="View"
           >
             View
           </button>
-          <button 
+          <button
             onClick={() => {
               setDeleteTarget(params.row.id);
               setShowDeleteModal(true);
             }}
-            className="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-xs font-semibold transition" 
+            className="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-xs font-semibold transition"
             title="Delete"
           >
             Delete
@@ -195,9 +195,9 @@ const Inventory = () => {
 
   // Stock Columns
   const stockColumns: GridColDef<any>[] = [
-    { 
-      field: "productName", 
-      headerName: "Product Name", 
+    {
+      field: "productName",
+      headerName: "Product Name",
       flex: 1,
       minWidth: 220,
       valueGetter: (params: any) => params?.row?.product?.name || "-",
@@ -208,9 +208,9 @@ const Inventory = () => {
         </div>
       ),
     },
-    { 
-      field: "brandName", 
-      headerName: "Category", 
+    {
+      field: "brandName",
+      headerName: "Category",
       width: 140,
       valueGetter: (params: any) => params?.row?.product?.brand?.name || "-",
       renderCell: (params) => (
@@ -268,7 +268,7 @@ const Inventory = () => {
       sortable: false,
       align: "center",
       renderCell: (params) => (
-        <button 
+        <button
           onClick={() => handleEditStockClick(params.row)}
           className="p-2 hover:bg-blue-100 rounded-lg text-blue-600 transition font-bold text-lg"
           title="Edit"
@@ -283,12 +283,12 @@ const Inventory = () => {
   useEffect(() => {
     if (productsData?.data) {
       setProducts(productsData.data);
-      
-      const lowStock = productsData.data.filter((p: any) => 
+
+      const lowStock = productsData.data.filter((p: any) =>
         p.totalStock > 0 && p.totalStock < (p.lowStockLevel || 5)
       ).length;
-      
-      const outOfStock = productsData.data.filter((p: any) => 
+
+      const outOfStock = productsData.data.filter((p: any) =>
         p.totalStock === 0
       ).length;
 
@@ -372,7 +372,7 @@ const Inventory = () => {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    
+
     try {
       await deleteProduct(deleteTarget).unwrap();
       alert("Product deleted successfully!");
@@ -389,7 +389,7 @@ const Inventory = () => {
     return !stocks.some((s) => s.productId === product.id);
   }) || [];
 
-  const filteredStocks = showLowStockOnly 
+  const filteredStocks = showLowStockOnly
     ? stocks.filter((s) => s.quantity < s.lowStockLevel)
     : stocks;
 
@@ -419,26 +419,24 @@ const Inventory = () => {
   return (
     <div className="flex flex-col h-full">
       <Header name="Inventory" />
-      
+
       {/* Tabs */}
       <div className="flex items-center gap-6 px-6 pt-6 border-b-2 border-gray-200 bg-white">
         <button
           onClick={() => setActiveTab("overview")}
-          className={`px-4 py-4 font-bold text-lg border-b-4 transition-all duration-300 ${
-            activeTab === "overview"
+          className={`px-4 py-4 font-bold text-lg border-b-4 transition-all duration-300 ${activeTab === "overview"
               ? "text-emerald-600 border-emerald-600"
               : "text-gray-600 border-transparent hover:text-gray-900"
-          }`}
+            }`}
         >
           📦 Inventory Overview
         </button>
         <button
           onClick={() => setActiveTab("stocks")}
-          className={`px-4 py-4 font-bold text-lg border-b-4 transition-all duration-300 ${
-            activeTab === "stocks"
+          className={`px-4 py-4 font-bold text-lg border-b-4 transition-all duration-300 ${activeTab === "stocks"
               ? "text-emerald-600 border-emerald-600"
               : "text-gray-600 border-transparent hover:text-gray-900"
-          }`}
+            }`}
         >
           📊 Stock Management
         </button>
@@ -632,11 +630,10 @@ const Inventory = () => {
               </div>
               <button
                 onClick={() => setShowLowStockOnly(!showLowStockOnly)}
-                className={`px-6 py-3 rounded-xl font-bold transition whitespace-nowrap ${
-                  showLowStockOnly
+                className={`px-6 py-3 rounded-xl font-bold transition whitespace-nowrap ${showLowStockOnly
                     ? "bg-ambber-600 text-white hover:bg-amber-700 shadow-md"
                     : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                }`}
+                  }`}
               >
                 {showLowStockOnly ? "✓ Low Stock Only" : "All Items"}
               </button>
@@ -775,7 +772,7 @@ const Inventory = () => {
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xl font-bold text-gray-900">Product Details</h3>
-              <button 
+              <button
                 onClick={() => setShowDetailsModal(false)}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
               >
@@ -789,7 +786,7 @@ const Inventory = () => {
                   <img src={selectedProduct.imageUrl} alt={selectedProduct.name} className="w-full h-full object-cover" />
                 </div>
               )}
-              
+
               <div>
                 <p className="text-sm text-gray-600">Product Name</p>
                 <p className="text-lg font-semibold text-gray-900">{selectedProduct.name}</p>
@@ -885,7 +882,7 @@ const Inventory = () => {
                 <h3 className="text-2xl font-bold text-gray-900">Edit Product</h3>
                 <p className="text-sm text-gray-500 mt-1">Update product details and inventory settings</p>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   setShowEditModal(false);
                   setEditingProduct(null);

@@ -116,7 +116,7 @@ const Sidebar = () => {
           label="Dashboard"
           isCollapsed={isSidebarCollapsed}
         />
-        
+
         {/* Inventory Management Section */}
         <SidebarLink
           href="/inventory"

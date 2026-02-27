@@ -18,7 +18,7 @@ export const getProducts = async (
           ...(search && { name: { contains: search } }),
           ...(seriesId && { seriesId }),
         },
-        include: { 
+        include: {
           brand: { select: { id: true, name: true } },
           series: { select: { id: true, name: true, category: { select: { id: true, name: true } } } },
           stocks: true,

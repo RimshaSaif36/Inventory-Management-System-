@@ -29,23 +29,23 @@ export const uploadImage = async (req: Request, res: Response) => {
     if (req.file && req.file.path) {
       try {
         console.log("Uploading file from path:", req.file.path);
-        
+
         // Check if file exists
         if (!fs.existsSync(req.file.path)) {
           console.error("File does not exist at path:", req.file.path);
           return res.status(400).json({ message: "File not found after upload" });
         }
 
-        const result = await cloudinary.v2.uploader.upload(req.file.path, { 
+        const result = await cloudinary.v2.uploader.upload(req.file.path, {
           folder: "inventory_products",
           resource_type: "auto"
         });
-        
+
         // Clean up the temporary file
         fs.unlink(req.file.path, (err) => {
           if (err) console.error("Error deleting temp file:", err);
         });
-        
+
         console.log("Image uploaded successfully:", result.secure_url);
         return res.json({ url: result.secure_url });
       } catch (cloudinaryError) {
@@ -56,8 +56,8 @@ export const uploadImage = async (req: Request, res: Response) => {
             if (err) console.error("Error deleting temp file:", err);
           });
         }
-        return res.status(500).json({ 
-          message: "Image upload failed", 
+        return res.status(500).json({
+          message: "Image upload failed",
           error: cloudinaryError instanceof Error ? cloudinaryError.message : "Unknown error"
         });
       }
@@ -68,7 +68,7 @@ export const uploadImage = async (req: Request, res: Response) => {
       try {
         console.log("Uploading base64 image");
         const base64 = req.body.image;
-        const result = await cloudinary.v2.uploader.upload(base64, { 
+        const result = await cloudinary.v2.uploader.upload(base64, {
           folder: "inventory_products",
           resource_type: "auto"
         });
@@ -76,8 +76,8 @@ export const uploadImage = async (req: Request, res: Response) => {
         return res.json({ url: result.secure_url });
       } catch (cloudinaryError) {
         console.error("Cloudinary base64 upload error:", cloudinaryError);
-        return res.status(500).json({ 
-          message: "Image upload failed", 
+        return res.status(500).json({
+          message: "Image upload failed",
           error: cloudinaryError instanceof Error ? cloudinaryError.message : "Unknown error"
         });
       }
@@ -86,8 +86,8 @@ export const uploadImage = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Invalid image payload" });
   } catch (error) {
     console.error("uploadImage error:", error);
-    return res.status(500).json({ 
-      message: "Image upload failed", 
+    return res.status(500).json({
+      message: "Image upload failed",
       error: error instanceof Error ? error.message : "Unknown error"
     });
   }

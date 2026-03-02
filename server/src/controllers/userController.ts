@@ -28,7 +28,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
 export const getCurrentUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userId = req.headers["user-id"]?.toString();
-    
+
     if (!userId) {
       res.status(401).json({ message: "User ID not provided" });
       return;

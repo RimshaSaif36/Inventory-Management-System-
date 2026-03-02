@@ -1,16 +1,16 @@
 import { Router } from "express";
 import multer from "multer";
 import {
-    createProduct,
-    getProducts,
-    getProductById,
-    updateProduct,
-    deleteProduct,
+  createProduct,
+  getProducts,
+  getProductById,
+  updateProduct,
+  deleteProduct,
 } from "../controllers/productController";
 import { uploadImage } from "../controllers/uploadController";
 
 // Configure multer with file size and type validation
-const upload = multer({ 
+const upload = multer({
   dest: "./uploads/",
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit

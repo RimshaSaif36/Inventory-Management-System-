@@ -39,9 +39,9 @@ const LoginPage = () => {
             role: data.user.user_metadata?.role?.toUpperCase() || "ACCOUNTANT",
             storeId: data.user.user_metadata?.storeId || "",
           };
-          
+
           dispatch(setUser(userData));
-          
+
           // Redirect to dashboard after successful login
           router.push("/dashboard");
         } catch (err: any) {

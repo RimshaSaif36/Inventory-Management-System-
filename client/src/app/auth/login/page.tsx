@@ -6,12 +6,14 @@ import { useAppDispatch } from "@/app/redux";
 import { setUser } from "@/state/userSlice";
 import { login, resetPassword } from "@/lib/authService";
 import { apiClient } from "@/lib/apiClient";
+import { Eye, EyeOff } from "lucide-react";
 
 const LoginPage = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showReset, setShowReset] = useState(false);
@@ -26,36 +28,33 @@ const LoginPage = () => {
       const { data, error: authError } = await login(email, password);
       if (authError) {
         setError(authError.message || "Login failed");
-      } else if (data.session) {
-        // Successful auth with Supabase, now fetch user data from backend
+        setLoading(false);
+      } else if (data.user && data.session) {
+        // Successful auth with Supabase
         try {
-          const response = await apiClient.get("/users/me", {
-            headers: {
-              "Authorization": `Bearer ${data.session.access_token}`,
-            },
-          });
+          const userData = {
+            id: data.user.id,
+            email: data.user.email || email,
+            name: data.user.user_metadata?.name || "",
+            role: data.user.user_metadata?.role?.toUpperCase() || "ACCOUNTANT",
+            storeId: data.user.user_metadata?.storeId || "",
+          };
           
-          const userData = response.data.data || response.data;
+          dispatch(setUser(userData));
           
-          dispatch(setUser({
-            id: userData.id,
-            name: userData.name || "",
-            email: userData.email,
-            role: userData.role || "ACCOUNTANT",
-            storeId: userData.storeId,
-          }));
-          
-          router.push("/");
+          // Redirect to dashboard after successful login
+          router.push("/dashboard");
         } catch (err: any) {
-          console.error("Failed to fetch user data:", err);
-          setError("Failed to load user profile");
+          console.error("Failed to process login:", err);
+          setError("Failed to process login");
+          setLoading(false);
         }
       } else {
         setError("Login failed");
+        setLoading(false);
       }
     } catch (err: any) {
       setError(err?.message || "Login failed");
-    } finally {
       setLoading(false);
     }
   };
@@ -90,18 +89,27 @@ const LoginPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full border rounded px-3 py-2"
+                autoComplete="email"
                 required
               />
             </div>
-            <div>
+            <div className="relative">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded px-3 py-2 pr-10"
+                autoComplete="current-password"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
             {error && <div className="text-red-600">{error}</div>}
             <button

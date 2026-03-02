@@ -10,7 +10,6 @@
     "start": "npm run build && node dist/index.js",
     "predev": "node ./scripts/ensurePortFree.js",
     "dev": "nodemon src/index.ts"
-
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -21,7 +20,9 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.95.3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/multer": "^2.0.0",
+    "bcryptjs": "^3.0.3",
     "body-parser": "^1.20.2",
     "cloudinary": "^2.9.0",
     "concurrently": "^8.2.2",
@@ -31,7 +32,8 @@
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
-    "react-dropzone": "^14.4.0"
+    "react-dropzone": "^14.4.0",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -46,7 +48,3 @@
     "typescript": "^5.5.3"
   }
 }
-
-
-
-

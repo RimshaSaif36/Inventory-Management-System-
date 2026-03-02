@@ -9,7 +9,21 @@ import {
 } from "../controllers/productController";
 import { uploadImage } from "../controllers/uploadController";
 
-const upload = multer({ dest: "./uploads/" });
+// Configure multer with file size and type validation
+const upload = multer({ 
+  dest: "./uploads/",
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 const router = Router();
 

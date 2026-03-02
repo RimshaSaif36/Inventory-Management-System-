@@ -145,9 +145,18 @@ export interface DashboardMetrics {
 }
 
 export interface User {
-  userId: string;
+  id: string;
   name: string;
   email: string;
+  role: string;
+  createdAt?: string;
+}
+
+export interface NewUser {
+  name: string;
+  email: string;
+  role: string;
+  password: string;
 }
 
 export const api = createApi({
@@ -332,6 +341,14 @@ export const api = createApi({
       query: () => "/users",
       providesTags: ["Users"],
     }),
+    createUser: build.mutation<User, NewUser>({
+      query: (newUser) => ({
+        url: "/users",
+        method: "POST",
+        body: newUser,
+      }),
+      invalidatesTags: ["Users"],
+    }),
     getExpensesByCategory: build.query<ExpenseByCategorySummary[], void>({
       query: () => "/expenses",
       providesTags: ["Expenses"],
@@ -370,7 +387,8 @@ export const {
   useGetStockByIdQuery,
   useCreateStockMutation,
   useUpdateStockMutation,
-  // Existing hooks
+  // User hooks
   useGetUsersQuery,
+  useCreateUserMutation,
   useGetExpensesByCategoryQuery,
 } = api;

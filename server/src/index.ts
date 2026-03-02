@@ -67,7 +67,22 @@ app.use("/reports", reportRoutes); // http://localhost:5000/reports
 /* ERROR HANDLING MIDDLEWARE */
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error("Error:", err);
-  res.status(500).json({ error: err?.message || "Internal server error" });
+  
+  // Handle multer errors
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ error: "File size exceeds 10MB limit" });
+  }
+  if (err.code === 'LIMIT_PART_COUNT') {
+    return res.status(400).json({ error: "Too many parts in form" });
+  }
+  if (err.message && err.message.includes('Only image files are allowed')) {
+    return res.status(400).json({ error: "Only image files are allowed" });
+  }
+  
+  res.status(err.status || 500).json({ 
+    error: err?.message || "Internal server error",
+    details: process.env.NODE_ENV === 'development' ? err : undefined
+  });
 });
 
 /* SERVER */

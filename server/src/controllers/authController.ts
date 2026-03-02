@@ -51,14 +51,13 @@ export const registerAccountant = async (
       update: {
         name,
         email,
-        storeId,
       },
       create: {
         id: authData.user.id,
         name,
         email,
+        password: "", // Password handled by Supabase
         role: "ACCOUNTANT",
-        storeId,
       },
     });
 

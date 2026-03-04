@@ -17,7 +17,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Suppress console errors (only once)
     if (typeof window === "undefined") return;
-    
+
     const origConsoleError = console.error;
     console.error = (...args: any[]) => {
       try {
@@ -39,7 +39,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   // Optimize dark mode application
   useEffect(() => {
     if (typeof document === "undefined") return;
-    
+
     const root = document.documentElement;
     const method = isDarkMode ? "add" : "remove";
     root.classList[method]("dark");
@@ -48,15 +48,13 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div
-      className={`${
-        isDarkMode ? "dark" : "light"
-      } flex bg-gray-50 text-gray-900 w-full min-h-screen`}
+      className={`${isDarkMode ? "dark" : "light"
+        } flex bg-gray-50 text-gray-900 w-full min-h-screen`}
     >
       <Sidebar />
       <main
-        className={`flex flex-col w-full h-full py-7 px-9 bg-gray-50 ${
-          isSidebarCollapsed ? "md:pl-24" : "md:pl-72"
-        }`}
+        className={`flex flex-col w-full h-full py-7 px-9 bg-gray-50 ${isSidebarCollapsed ? "md:pl-24" : "md:pl-72"
+          }`}
       >
         <Navbar />
         {children}

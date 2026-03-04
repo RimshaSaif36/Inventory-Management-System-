@@ -4,10 +4,10 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
-  
+
   // Enable trailing slashes for better caching
   trailingSlash: false,
-  
+
   images: {
     // Unoptimized only in dev, optimize in production
     unoptimized: process.env.NODE_ENV === "development",

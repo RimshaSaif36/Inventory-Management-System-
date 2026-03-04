@@ -130,7 +130,7 @@ const CreateProductModal = ({
       onClose();
     } catch (error: any) {
       let errorMessage = "Failed to save product";
-      
+
       // Try to extract the most relevant error message
       if (error?.data?.message) {
         errorMessage = error.data.message;
@@ -139,7 +139,7 @@ const CreateProductModal = ({
       } else if (typeof error === "string") {
         errorMessage = error;
       }
-      
+
       console.error("Failed to save product:", error);
       setError(errorMessage);
     }

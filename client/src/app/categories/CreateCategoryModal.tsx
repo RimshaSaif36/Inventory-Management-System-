@@ -24,7 +24,8 @@ const CreateCategoryModal = ({ isOpen, onClose, category }: Props) => {
 
     const [createCategory, { isLoading: isCreating }] = useCreateCategoryMutation();
     const [updateCategory, { isLoading: isUpdating }] = useUpdateCategoryMutation();
-    const { data: brands } = useGetBrandsQuery(undefined);
+    const { data: brandsResponse } = useGetBrandsQuery(undefined);
+    const brands = brandsResponse?.data || [];
 
     useEffect(() => {
         if (category) {

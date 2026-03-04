@@ -49,7 +49,8 @@ const Products = () => {
   const total = productsResponse?.total || 0;
   const totalPages = productsResponse?.totalPages || 1;
 
-  const { data: series } = useGetSeriesQuery(undefined);
+  const { data: seriesResponse } = useGetSeriesQuery(undefined);
+  const series = seriesResponse?.data || [];
   const [createProduct] = useCreateProductMutation();
   const [deleteProduct] = useDeleteProductMutation();
 

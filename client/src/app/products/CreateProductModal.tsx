@@ -33,7 +33,8 @@ const CreateProductModal = ({
   });
   const [error, setError] = useState<string>("");
 
-  const { data: series } = useGetSeriesQuery(undefined);
+  const { data: seriesResponse } = useGetSeriesQuery(undefined);
+  const series = seriesResponse?.data || [];
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
 
   useEffect(() => {

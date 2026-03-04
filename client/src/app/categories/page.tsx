@@ -24,7 +24,8 @@ const Categories = () => {
     const total = categoriesResponse?.total || 0;
     const totalPages = categoriesResponse?.totalPages || 1;
 
-    const { data: brands } = useGetBrandsQuery(undefined);
+    const { data: brandsResponse } = useGetBrandsQuery(undefined);
+    const brands = brandsResponse?.data || [];
     const [deleteCategory] = useDeleteCategoryMutation();
 
     const handleDelete = async (id: string) => {

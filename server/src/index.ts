@@ -10,6 +10,8 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { prisma } from "./lib/prisma";
 
+import compression from "compression";
+
 /* ROUTE IMPORTS */
 import dashboardRoutes from "./routes/dashboardRoutes";
 import productRoutes from "./routes/productRoutes";
@@ -36,6 +38,15 @@ app.use(morgan("common"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors());
+
+// Enable gzip compression for all responses
+app.use(compression());
+
+// Set cache headers for static and API responses
+app.use((req, res, next) => {
+  res.setHeader("Cache-Control", "public, max-age=60");
+  next();
+});
 
 app.get("/health/db", async (req, res) => {            //http://localhost:8000/health/db
   try {

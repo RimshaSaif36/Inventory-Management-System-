@@ -159,8 +159,61 @@ export interface NewUser {
   password: string;
 }
 
+type CurrentUserLike = {
+  id?: string;
+  role?: string;
+} | null;
+
+const getCurrentUserFromPersistedStore = (): CurrentUserLike => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const persistedRoot = localStorage.getItem("persist:root");
+    if (!persistedRoot) return null;
+
+    const parsedRoot = JSON.parse(persistedRoot) as { user?: string };
+    if (!parsedRoot.user) return null;
+
+    const parsedUserState = JSON.parse(parsedRoot.user) as {
+      currentUser?: CurrentUserLike;
+    };
+
+    return parsedUserState.currentUser ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const getAuthUser = (state: unknown): CurrentUserLike => {
+  const currentUserFromState = (state as { user?: { currentUser?: CurrentUserLike } })?.user?.currentUser;
+
+  if (currentUserFromState?.id && currentUserFromState?.role) {
+    return currentUserFromState;
+  }
+
+  return getCurrentUserFromPersistedStore();
+};
+
 export const api = createApi({
-  baseQuery: fetchBaseQuery({ baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL }),
+  baseQuery: fetchBaseQuery({
+    baseUrl:
+      process.env.NEXT_PUBLIC_API_BASE_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      "http://localhost:5000",
+    prepareHeaders: (headers, { getState }) => {
+      const currentUser = getAuthUser(getState());
+
+      if (currentUser?.id) {
+        headers.set("user-id", currentUser.id);
+      }
+
+      if (currentUser?.role) {
+        headers.set("user-role", currentUser.role);
+      }
+
+      return headers;
+    },
+  }),
   reducerPath: "api",
   tagTypes: ["DashboardMetrics", "Products", "Users", "Expenses", "Brands", "Categories", "Series", "Stock"],
   endpoints: (build) => ({

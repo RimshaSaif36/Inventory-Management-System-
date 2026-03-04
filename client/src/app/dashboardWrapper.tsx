@@ -15,10 +15,9 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
 
   useEffect(() => {
-    // Suppress React 19 deprecation console error coming from some libraries
-    // that access `element.ref`. This is a temporary runtime filter to
-    // avoid noisy errors during development. Long-term fix: align Next/React
-    // versions and upgrade MUI to a React-19-compatible release.
+    // Suppress console errors (only once)
+    if (typeof window === "undefined") return;
+    
     const origConsoleError = console.error;
     console.error = (...args: any[]) => {
       try {
@@ -32,16 +31,19 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       origConsoleError.apply(console, args);
     };
 
-    // Apply dark mode class
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.add("light");
-    }
-
     return () => {
       console.error = origConsoleError;
     };
+  }, []);
+
+  // Optimize dark mode application
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    
+    const root = document.documentElement;
+    const method = isDarkMode ? "add" : "remove";
+    root.classList[method]("dark");
+    root.classList[method === "add" ? "remove" : "add"]("light");
   }, [isDarkMode]);
 
   return (
@@ -69,14 +71,21 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const currentUser = useAppSelector((state) => state.user?.currentUser);
 
-  // Public routes that don't require authentication
+  // Public routes that don't require authentication (memoized)
   const publicRoutes = ["/auth/login", "/auth/register", "/auth/reset-password"];
   const isPublicRoute = publicRoutes.some((route) => pathname?.startsWith(route));
 
   useEffect(() => {
+    // Skip auth check for public routes
+    if (isPublicRoute) {
+      setIsAuthenticated(true);
+      return;
+    }
+
+    // Check authentication
     (async () => {
       try {
-        // Prefer Redux user state if available (it's hydrated from localStorage)
+        // Prefer Redux user state if available (already hydrated from localStorage)
         if (currentUser) {
           setIsAuthenticated(true);
           return;
@@ -84,21 +93,19 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
 
         // Fallback to Supabase session check
         const session = await getSession();
-        setIsAuthenticated(!!session);
-
-        // If not authenticated and trying to access protected route
-        if (!session && !isPublicRoute) {
-          router.push("/auth/login");
+        if (session) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+          router.replace("/auth/login");
         }
       } catch (error) {
         console.error("Auth check failed:", error);
         setIsAuthenticated(false);
-        if (!isPublicRoute) {
-          router.push("/auth/login");
-        }
+        router.replace("/auth/login");
       }
     })();
-  }, [pathname, router, isPublicRoute, currentUser]);
+  }, [pathname, isPublicRoute, currentUser, router]);
 
   // Show nothing while checking authentication
   if (isAuthenticated === null) {
@@ -114,20 +121,12 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
 
   // If public route (login, register, etc), show children without layout
   if (isPublicRoute) {
-    return (
-      <StoreProvider>
-        {children}
-      </StoreProvider>
-    );
+    return children;
   }
 
   // If authenticated, show full layout with sidebar and navbar
   if (isAuthenticated) {
-    return (
-      <StoreProvider>
-        <DashboardLayout>{children}</DashboardLayout>
-      </StoreProvider>
-    );
+    return <DashboardLayout>{children}</DashboardLayout>;
   }
 
   // Fallback: redirect to login

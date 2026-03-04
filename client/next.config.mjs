@@ -1,10 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Performance optimizations
+  compress: true,
+  poweredByHeader: false,
+  productionBrowserSourceMaps: false,
+  
+  // Enable trailing slashes for better caching
+  trailingSlash: false,
+  
   images: {
-    // Disable Next.js built-in image optimization in dev to avoid upstream
-    // fetch failures for S3-hosted assets that return redirects (301).
-    // This lets the browser request images directly from S3.
-    unoptimized: true,
+    // Unoptimized only in dev, optimize in production
+    unoptimized: process.env.NODE_ENV === "development",
     remotePatterns: [
       {
         protocol: "https",
@@ -13,13 +19,14 @@ const nextConfig = {
         pathname: "/**",
       },
       {
-        // Allow Cloudinary-hosted images from the official CDN
         protocol: "https",
         hostname: "res.cloudinary.com",
         port: "",
         pathname: "/**",
       },
     ],
+    // Optimize images with next/image
+    formats: ["image/avif", "image/webp"],
   },
 };
 

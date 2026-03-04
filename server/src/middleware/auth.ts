@@ -13,12 +13,11 @@ export const authMiddleware = async (
 ): Promise<void> => {
   try {
     const userId = req.headers["user-id"]?.toString();
-    const userRole = req.headers["user-role"]?.toString();
 
-    // If no auth headers, allow to proceed (for public routes)
-    // Specific routes can require auth if needed
-    if (!userId || !userRole) {
-      return next();
+    // If no user-id header, reject the request as unauthorized
+    if (!userId) {
+      res.status(401).json({ message: "User ID header is missing" });
+      return;
     }
 
     const user = await prisma.user.findUnique({

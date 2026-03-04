@@ -199,7 +199,9 @@ export const getLowStockProducts = async (
     });
 
     // Filter for low stock items (quantity < lowStockLevel)
-    const lowStockItems = stocks.filter((stock) => stock.quantity < stock.lowStockLevel);
+    const lowStockItems = stocks.filter((stock: { quantity: number; lowStockLevel: number }) =>
+      stock.quantity < stock.lowStockLevel
+    );
 
     res.json(lowStockItems);
   } catch (error) {
@@ -271,7 +273,7 @@ export const getStockReport = async (
       stocks,
       summary: {
         totalProducts: stocks.length,
-        totalQuantity: stocks.reduce((sum, s) => sum + s.quantity, 0),
+        totalQuantity: stocks.reduce((sum: number, s: { quantity: number }) => sum + s.quantity, 0),
         totalValue,
         lowStockCount,
         stockByBrand,

@@ -7,15 +7,28 @@ export const getSuppliers = async (
 ): Promise<void> => {
   try {
     const search = req.query.search?.toString();
+    const page = Math.max(1, parseInt(req.query.page?.toString() || "1"));
+    const pageSize = Math.min(100, parseInt(req.query.pageSize?.toString() || "50"));
+    const skip = (page - 1) * pageSize;
 
-    const suppliers = await prisma.supplier.findMany({
-      where: {
-        ...(search && { name: { contains: search } }),
-      },
-      include: { purchases: { take: 5 } },
-    });
+    const [suppliers, total] = await Promise.all([
+      prisma.supplier.findMany({
+        where: {
+          ...(search && { name: { contains: search } }),
+        },
+        include: { purchases: { take: 5 } },
+        skip,
+        take: pageSize,
+        orderBy: { name: "asc" },
+      }),
+      prisma.supplier.count({
+        where: {
+          ...(search && { name: { contains: search } }),
+        },
+      }),
+    ]);
 
-    res.json(suppliers);
+    res.json({ data: suppliers, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
   } catch (error) {
     console.error("getSuppliers error:", error);
     res.status(500).json({ message: "Error retrieving suppliers" });

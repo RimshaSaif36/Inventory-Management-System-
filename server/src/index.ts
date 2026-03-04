@@ -1,6 +1,9 @@
-import express from "express";
+/* CONFIGURATIONS - Load environment variables first */
 import dotenv from "dotenv";
 import path from "path";
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import helmet from "helmet";
@@ -25,8 +28,6 @@ import invoiceRoutes from "./routes/invoiceRoutes";
 import stockRoutes from "./routes/stockRoutes";
 import reportRoutes from "./routes/reportRoutes";
 
-/* CONFIGURATIONS */
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const app = express();
 app.use(express.json());
 app.use(helmet());

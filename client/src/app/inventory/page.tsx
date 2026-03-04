@@ -310,12 +310,13 @@ const Inventory = () => {
   // Auto-refresh every 10 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      refetch();
-      refetchStocks();
+      if (typeof refetch === "function") refetch();
+      // Only attempt to refetch stocks when a storeId is available
+      if (storeId && typeof refetchStocks === "function") refetchStocks();
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [refetch, refetchStocks]);
+  }, [refetch, refetchStocks, storeId]);
 
   const handleAddStock = async (e: React.FormEvent) => {
     e.preventDefault();

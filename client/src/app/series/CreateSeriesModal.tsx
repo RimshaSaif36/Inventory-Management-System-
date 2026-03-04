@@ -24,7 +24,8 @@ const CreateSeriesModal = ({ isOpen, onClose, series }: Props) => {
 
     const [createSeries, { isLoading: isCreating }] = useCreateSeriesMutation();
     const [updateSeries, { isLoading: isUpdating }] = useUpdateSeriesMutation();
-    const { data: categories } = useGetCategoriesQuery(undefined);
+    const { data: categoriesResponse } = useGetCategoriesQuery(undefined);
+    const categories = categoriesResponse?.data || [];
 
     useEffect(() => {
         if (series) {

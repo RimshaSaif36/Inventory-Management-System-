@@ -1,31 +1,54 @@
-import { PrismaClient } from "@prisma/client";
+import * as PrismaPkg from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 declare global {
-  var prisma: PrismaClient | undefined;
+  // survive hot reloads in dev
+  // eslint-disable-next-line no-var
+  var prisma: any | undefined;
+  // eslint-disable-next-line no-var
+  var pgPool: Pool | undefined;
 }
 
-// Avoid multiple instances in development
-export const prisma =
-  global.prisma ||
-  new PrismaClient({
-    log: ["error", "warn"],
-    errorFormat: "pretty",
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  console.warn(
+    "[Prisma] DATABASE_URL is not set. Please configure your database connection."
+  );
+}
+
+// Ensure a single pg Pool instance
+const pool: Pool =
+  globalThis.pgPool ??
+  new Pool({
+    connectionString: connectionString ?? "",
   });
 
-if (process.env.NODE_ENV !== "production") global.prisma = prisma;
+if (process.env.NODE_ENV !== "production") {
+  globalThis.pgPool = pool;
+}
 
-// Reset Prisma connection on startup to clear prepared statement cache from pooler
-if (process.env.NODE_ENV === "development") {
-  (async () => {
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await prisma.$disconnect();
-      console.log("[Prisma] Disconnected to clear pooler cache");
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await prisma.$connect();
-      console.log("[Prisma] Reconnected successfully");
-    } catch (err) {
-      console.error("[Prisma] Failed to reset connection on startup:", err);
-    }
-  })();
+// Adapter for Prisma 7
+const adapter = new PrismaPg(pool);
+
+// Resolve PrismaClient constructor at runtime to avoid named-export mismatches
+const PrismaClientCtor =
+  // prefer explicit export if present
+  (PrismaPkg as any).PrismaClient ??
+  // fallback to default export
+  (PrismaPkg as any).default ??
+  // last-resort: the module itself may be the constructor
+  (PrismaPkg as any);
+
+// Ensure a single PrismaClient instance
+export const prisma: any =
+  globalThis.prisma ||
+  new PrismaClientCtor({
+    adapter,
+    log: ["error", "warn"],
+  });
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.prisma = prisma;
 }

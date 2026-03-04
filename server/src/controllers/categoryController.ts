@@ -8,22 +8,33 @@ export const getCategories = async (
     try {
         const search = req.query.search?.toString();
         const brandId = req.query.brandId?.toString();
+        const page = Math.max(1, parseInt(req.query.page?.toString() || "1"));
+        const pageSize = Math.min(100, parseInt(req.query.pageSize?.toString() || "50"));
+        const skip = (page - 1) * pageSize;
 
-        const categories = await prisma.category.findMany({
-            where: {
-                ...(search && {
-                    name: {
-                        contains: search,
-                    },
-                }),
-                ...(brandId && { brandId }),
-            },
-            include: {
-                brand: true,
-                series: true,
-            },
-        });
-        res.json(categories);
+        const whereClause = {
+            ...(search && {
+                name: {
+                    contains: search,
+                },
+            }),
+            ...(brandId && { brandId }),
+        };
+
+        const [categories, total] = await Promise.all([
+            prisma.category.findMany({
+                where: whereClause,
+                include: {
+                    brand: true,
+                    series: true,
+                },
+                skip,
+                take: pageSize,
+                orderBy: { name: "asc" },
+            }),
+            prisma.category.count({ where: whereClause }),
+        ]);
+        res.json({ data: categories, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     } catch (error) {
         res.status(500).json({ message: "Error retrieving categories" });
     }

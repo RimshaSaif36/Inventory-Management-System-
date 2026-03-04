@@ -210,12 +210,15 @@ export const getInvoiceSummaryReport = async (
     });
 
     const totalInvoices = invoices.length;
-    const totalAmount = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+    const totalAmount = invoices.reduce(
+      (sum: number, inv: { totalAmount?: number }) => sum + (inv.totalAmount ?? 0),
+      0
+    );
 
     const paymentMethodSummary: Record<string, number> = {};
-    invoices.forEach((inv) => {
+    invoices.forEach((inv: { paymentMethod?: string; totalAmount?: number }) => {
       const method = inv.paymentMethod || "NOT_SPECIFIED";
-      paymentMethodSummary[method] = (paymentMethodSummary[method] || 0) + inv.totalAmount;
+      paymentMethodSummary[method] = (paymentMethodSummary[method] || 0) + (inv.totalAmount ?? 0);
     });
 
     res.json({

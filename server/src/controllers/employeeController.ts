@@ -8,16 +8,27 @@ export const getEmployees = async (
   try {
     const storeId = req.query.storeId?.toString();
     const search = req.query.search?.toString();
+    const page = Math.max(1, parseInt(req.query.page?.toString() || "1"));
+    const pageSize = Math.min(100, parseInt(req.query.pageSize?.toString() || "50"));
+    const skip = (page - 1) * pageSize;
 
-    const employees = await prisma.employee.findMany({
-      where: {
-        ...(storeId && { storeId }),
-        ...(search && { name: { contains: search } }),
-      },
-      include: { store: true },
-    });
+    const whereClause: any = {
+      ...(storeId && { storeId }),
+      ...(search && { name: { contains: search } }),
+    };
 
-    res.json(employees);
+    const [employees, total] = await Promise.all([
+      prisma.employee.findMany({
+        where: whereClause,
+        include: { store: true },
+        skip,
+        take: pageSize,
+        orderBy: { name: "asc" },
+      }),
+      prisma.employee.count({ where: whereClause }),
+    ]);
+
+    res.json({ data: employees, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
   } catch (error) {
     console.error("getEmployees error:", error);
     res.status(500).json({ message: "Error retrieving employees" });

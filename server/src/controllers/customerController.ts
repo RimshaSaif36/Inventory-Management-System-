@@ -7,24 +7,35 @@ export const getCustomers = async (
 ): Promise<void> => {
   try {
     const search = req.query.search?.toString();
+    const page = Math.max(1, parseInt(req.query.page?.toString() || "1"));
+    const pageSize = Math.min(100, parseInt(req.query.pageSize?.toString() || "50"));
+    const skip = (page - 1) * pageSize;
 
-    const customers = await prisma.customer.findMany({
-      where: {
-        ...(search && {
-          OR: [
-            { name: { contains: search } },
-            { phone: { contains: search } },
-            { email: { contains: search } },
-          ],
-        }),
-      },
-      include: {
-        sales: { take: 5 },
-        orders: { take: 5 },
-      },
-    });
+    const whereClause = {
+      ...(search && {
+        OR: [
+          { name: { contains: search } },
+          { phone: { contains: search } },
+          { email: { contains: search } },
+        ],
+      }),
+    };
 
-    res.json(customers);
+    const [customers, total] = await Promise.all([
+      prisma.customer.findMany({
+        where: whereClause,
+        include: {
+          sales: { take: 5 },
+          orders: { take: 5 },
+        },
+        skip,
+        take: pageSize,
+        orderBy: { name: "asc" },
+      }),
+      prisma.customer.count({ where: whereClause }),
+    ]);
+
+    res.json({ data: customers, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
   } catch (error) {
     console.error("getCustomers error:", error);
     res.status(500).json({ message: "Error retrieving customers" });

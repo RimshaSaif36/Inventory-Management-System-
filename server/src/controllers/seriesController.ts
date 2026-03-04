@@ -8,22 +8,33 @@ export const getSeries = async (
     try {
         const search = req.query.search?.toString();
         const categoryId = req.query.categoryId?.toString();
+        const page = Math.max(1, parseInt(req.query.page?.toString() || "1"));
+        const pageSize = Math.min(100, parseInt(req.query.pageSize?.toString() || "50"));
+        const skip = (page - 1) * pageSize;
 
-        const series = await prisma.series.findMany({
-            where: {
-                ...(search && {
-                    name: {
-                        contains: search,
-                    },
-                }),
-                ...(categoryId && { categoryId }),
-            },
-            include: {
-                category: true,
-                products: true,
-            },
-        });
-        res.json(series);
+        const whereClause = {
+            ...(search && {
+                name: {
+                    contains: search,
+                },
+            }),
+            ...(categoryId && { categoryId }),
+        };
+
+        const [series, total] = await Promise.all([
+            prisma.series.findMany({
+                where: whereClause,
+                include: {
+                    category: true,
+                    products: true,
+                },
+                skip,
+                take: pageSize,
+                orderBy: { name: "asc" },
+            }),
+            prisma.series.count({ where: whereClause }),
+        ]);
+        res.json({ data: series, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
     } catch (error) {
         console.error("Error retrieving series:", error);
         res.status(500).json({ message: "Error retrieving series" });

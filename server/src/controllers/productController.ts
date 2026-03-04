@@ -12,16 +12,32 @@ export const getProducts = async (
     const pageSize = Math.min(100, parseInt(req.query.pageSize?.toString() || "50"));
     const skip = (page - 1) * pageSize;
 
+    // fetch products page with minimal joins
     const [productsData, total] = await Promise.all([
       prisma.product.findMany({
         where: {
           ...(search && { name: { contains: search } }),
           ...(seriesId && { seriesId }),
         },
-        include: {
+        select: {
+          id: true,
+          sku: true,
+          name: true,
+          brandId: true,
+          seriesId: true,
+          purchasePrice: true,
+          sellingPrice: true,
+          imageUrl: true,
+          createdAt: true,
+          updatedAt: true,
           brand: { select: { id: true, name: true } },
-          series: { select: { id: true, name: true, category: { select: { id: true, name: true } } } },
-          stocks: true,
+          series: {
+            select: {
+              id: true,
+              name: true,
+              category: { select: { id: true, name: true, brandId: true } },
+            },
+          },
         },
         skip,
         take: pageSize,
@@ -35,11 +51,28 @@ export const getProducts = async (
       }),
     ]);
 
-    // Calculate total stock for each product
+    // compute stock totals using a separate grouped query for faster results
+    const productIds = productsData.map((p: any) => p.id);
+    let stockGroups: any[] = [];
+    if (productIds.length > 0) {
+      stockGroups = await (prisma.stock.groupBy as any)({
+        by: ["productId"],
+        where: { productId: { in: productIds } },
+        _sum: { quantity: true },
+        _min: { lowStockLevel: true },
+      });
+    }
+    const stockMap: Record<string, { totalStock: number; lowStockLevel: number }> = {};
+    stockGroups.forEach((g: any) => {
+      stockMap[g.productId] = {
+        totalStock: g._sum.quantity || 0,
+        lowStockLevel: g._min.lowStockLevel || 0,
+      };
+    });
     const products = productsData.map((product: any) => ({
       ...product,
-      totalStock: product.stocks.reduce((sum: number, stock: any) => sum + stock.quantity, 0),
-      lowStockLevel: product.stocks.length > 0 ? product.stocks[0].lowStockLevel : 0,
+      totalStock: stockMap[product.id]?.totalStock || 0,
+      lowStockLevel: stockMap[product.id]?.lowStockLevel || 0,
     }));
 
     res.json({ data: products, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });

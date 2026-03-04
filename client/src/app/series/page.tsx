@@ -9,16 +9,22 @@ import CreateSeriesModal from "./CreateSeriesModal";
 const Series = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategoryId, setSelectedCategoryId] = useState("");
+    const [page, setPage] = useState<number>(1);
+    const [pageSize] = useState<number>(20);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSeries, setEditingSeries] = useState<any>(null);
 
     const {
-        data: series,
+        data: seriesResponse,
         isLoading,
         isError,
-    } = useGetSeriesQuery({ search: searchTerm, categoryId: selectedCategoryId });
+    } = useGetSeriesQuery({ search: searchTerm, categoryId: selectedCategoryId, page, pageSize });
+    const series = seriesResponse?.data || [];
+    const total = seriesResponse?.total || 0;
+    const totalPages = seriesResponse?.totalPages || 1;
 
-    const { data: categories } = useGetCategoriesQuery(undefined);
+    const { data: categoriesResponse } = useGetCategoriesQuery(undefined);
+    const categories = categoriesResponse?.data || [];
     const [deleteSeries] = useDeleteSeriesMutation();
 
     const handleDelete = async (id: string) => {
@@ -167,6 +173,15 @@ const Series = () => {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            {/* PAGINATION CONTROLS */}
+            <div className="mt-6 flex items-center justify-between">
+                <div className="text-sm text-gray-600">Showing page {page} of {totalPages} — {total} series</div>
+                <div className="space-x-2">
+                    <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">Prev</button>
+                    <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">Next</button>
                 </div>
             </div>
 

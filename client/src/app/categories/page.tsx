@@ -9,14 +9,20 @@ import CreateCategoryModal from "./CreateCategoryModal";
 const Categories = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBrandId, setSelectedBrandId] = useState("");
+    const [page, setPage] = useState<number>(1);
+    const [pageSize] = useState<number>(20);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<any>(null);
 
     const {
-        data: categories,
+        data: categoriesResponse,
         isLoading,
         isError,
-    } = useGetCategoriesQuery({ search: searchTerm, brandId: selectedBrandId });
+    } = useGetCategoriesQuery({ search: searchTerm, brandId: selectedBrandId, page, pageSize });
+
+    const categories = categoriesResponse?.data || [];
+    const total = categoriesResponse?.total || 0;
+    const totalPages = categoriesResponse?.totalPages || 1;
 
     const { data: brands } = useGetBrandsQuery(undefined);
     const [deleteCategory] = useDeleteCategoryMutation();
@@ -167,6 +173,15 @@ const Categories = () => {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            {/* PAGINATION CONTROLS */}
+            <div className="mt-6 flex items-center justify-between">
+                <div className="text-sm text-gray-600">Showing page {page} of {totalPages} — {total} categories</div>
+                <div className="space-x-2">
+                    <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">Prev</button>
+                    <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">Next</button>
                 </div>
             </div>
 

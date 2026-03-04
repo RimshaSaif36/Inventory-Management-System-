@@ -1,8 +1,9 @@
 "use client";
 
-import { useCreateProductMutation, useGetProductsQuery, useGetSeriesQuery, useDeleteProductMutation } from "@/state/api";
+import { useCreateProductMutation, useGetProductsQuery, useGetSeriesQuery, useDeleteProductMutation, api } from "@/state/api";
 import { PlusCircleIcon, SearchIcon, FilterIcon, EditIcon, TrashIcon } from "lucide-react";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAppDispatch } from "@/app/redux";
 import Header from "@/app/(components)/Header";
 import Rating from "@/app/(components)/Rating";
 import CreateProductModal from "./CreateProductModal";
@@ -23,11 +24,26 @@ const Products = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
 
+  const dispatch = useAppDispatch();
+
   const {
     data: productsResponse,
     isLoading,
     isError,
   } = useGetProductsQuery({ search: searchTerm, seriesId: selectedSeriesId, page, pageSize });
+
+  // prefetch next page to make pagination feel instant
+  useEffect(() => {
+    if (page < (productsResponse?.totalPages || 0)) {
+      dispatch(
+        api.util.prefetch(
+          "getProducts",
+          { search: searchTerm, seriesId: selectedSeriesId, page: page + 1, pageSize },
+          { force: true }
+        )
+      );
+    }
+  }, [page, searchTerm, selectedSeriesId, pageSize, productsResponse, dispatch]);
 
   const products = productsResponse?.data || [];
   const total = productsResponse?.total || 0;

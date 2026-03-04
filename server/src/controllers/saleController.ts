@@ -223,7 +223,10 @@ export const getSalesReport = async (
       orderBy: { createdAt: "desc" },
     });
 
-    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalSales = sales.reduce(
+      (sum: number, sale: { totalAmount?: number }) => sum + (sale.totalAmount ?? 0),
+      0
+    );
     const totalTransactions = sales.length;
 
     res.json({

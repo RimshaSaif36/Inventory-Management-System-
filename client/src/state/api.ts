@@ -204,7 +204,7 @@ export const api = createApi({
       invalidatesTags: ["Brands"],
     }),
     // Category endpoints
-    getCategories: build.query<Category[], { search?: string; brandId?: string } | undefined>({
+    getCategories: build.query<PaginationResponse<Category>, { search?: string; brandId?: string; page?: number; pageSize?: number } | undefined>({
       query: (params) => ({
         url: "/categories",
         params: params || undefined,
@@ -239,7 +239,7 @@ export const api = createApi({
       invalidatesTags: ["Categories"],
     }),
     // Series endpoints
-    getSeries: build.query<Series[], { search?: string; categoryId?: string } | undefined>({
+    getSeries: build.query<PaginationResponse<Series>, { search?: string; categoryId?: string; page?: number; pageSize?: number } | undefined>({
       query: (params) => ({
         url: "/series",
         params: params || undefined,

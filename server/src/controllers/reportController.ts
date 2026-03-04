@@ -26,7 +26,10 @@ export const getDailySalesReport = async (
       include: { items: { include: { product: true } } },
     });
 
-    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalSales = sales.reduce(
+      (sum: number, sale: { totalAmount?: number }) => sum + (sale.totalAmount ?? 0),
+      0
+    );
     const totalTransactions = sales.length;
 
     res.json({
@@ -69,7 +72,10 @@ export const getWeeklySalesReport = async (
       include: { items: { include: { product: true } } },
     });
 
-    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalSales = sales.reduce(
+      (sum: number, sale: { totalAmount?: number }) => sum + (sale.totalAmount ?? 0),
+      0
+    );
     const totalTransactions = sales.length;
 
     res.json({
@@ -113,7 +119,10 @@ export const getMonthlySalesReport = async (
       include: { items: { include: { product: true } } },
     });
 
-    const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const totalSales = sales.reduce(
+      (sum: number, sale: { totalAmount?: number }) => sum + (sale.totalAmount ?? 0),
+      0
+    );
     const totalTransactions = sales.length;
     const days = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
 
@@ -228,7 +237,10 @@ export const getPurchaseReport = async (
       orderBy: { createdAt: "desc" },
     });
 
-    const totalPurchases = purchases.reduce((sum, p) => sum + p.totalCost, 0);
+    const totalPurchases = purchases.reduce(
+      (sum: number, p: { totalCost?: number }) => sum + (p.totalCost ?? 0),
+      0
+    );
     const supplierSummary: Record<string, number> = {};
 
     for (const purchase of purchases) {

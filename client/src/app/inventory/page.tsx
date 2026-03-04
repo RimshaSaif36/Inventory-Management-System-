@@ -426,8 +426,8 @@ const Inventory = () => {
         <button
           onClick={() => setActiveTab("overview")}
           className={`px-4 py-4 font-bold text-lg border-b-4 transition-all duration-300 ${activeTab === "overview"
-              ? "text-emerald-600 border-emerald-600"
-              : "text-gray-600 border-transparent hover:text-gray-900"
+            ? "text-emerald-600 border-emerald-600"
+            : "text-gray-600 border-transparent hover:text-gray-900"
             }`}
         >
           📦 Inventory Overview
@@ -435,8 +435,8 @@ const Inventory = () => {
         <button
           onClick={() => setActiveTab("stocks")}
           className={`px-4 py-4 font-bold text-lg border-b-4 transition-all duration-300 ${activeTab === "stocks"
-              ? "text-emerald-600 border-emerald-600"
-              : "text-gray-600 border-transparent hover:text-gray-900"
+            ? "text-emerald-600 border-emerald-600"
+            : "text-gray-600 border-transparent hover:text-gray-900"
             }`}
         >
           📊 Stock Management
@@ -632,8 +632,8 @@ const Inventory = () => {
               <button
                 onClick={() => setShowLowStockOnly(!showLowStockOnly)}
                 className={`px-6 py-3 rounded-xl font-bold transition whitespace-nowrap ${showLowStockOnly
-                    ? "bg-ambber-600 text-white hover:bg-amber-700 shadow-md"
-                    : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+                  ? "bg-ambber-600 text-white hover:bg-amber-700 shadow-md"
+                  : "bg-gray-200 text-gray-800 hover:bg-gray-300"
                   }`}
               >
                 {showLowStockOnly ? "✓ Low Stock Only" : "All Items"}

@@ -7,6 +7,9 @@ import Navbar from "@/app/(components)/Navbar";
 import Sidebar from "@/app/(components)/Sidebar";
 import StoreProvider, { useAppSelector } from "./redux";
 import { getSession } from "@/lib/authService";
+import { PersistGate } from "redux-persist/integration/react";
+import { persistStore } from "redux-persist";
+import { makeStore } from "./redux";
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const isSidebarCollapsed = useAppSelector(
@@ -131,4 +134,20 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
   return null;
 };
 
-export default DashboardWrapper;
+const AppWrapper = ({ children }: { children: React.ReactNode }) => {
+  const storeRef = React.useRef<any>();
+  if (!storeRef.current) {
+    storeRef.current = makeStore();
+  }
+  const persistor = persistStore(storeRef.current);
+
+  return (
+    <StoreProvider>
+      <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
+        <DashboardWrapper>{children}</DashboardWrapper>
+      </PersistGate>
+    </StoreProvider>
+  );
+};
+
+export default AppWrapper;

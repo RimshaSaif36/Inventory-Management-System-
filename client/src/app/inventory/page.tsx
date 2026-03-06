@@ -106,11 +106,11 @@ const Inventory = () => {
         const lowLevel = params.row.lowStockLevel || 5;
 
         if (qty === 0) {
-          return <span className="font-bold text-red-600 text-base">{qty}kg</span>;
+          return <span className="font-bold text-red-600 text-base">{qty}</span>;
         } else if (qty < lowLevel) {
-          return <span className="font-bold text-amber-600 text-base">{qty}kg</span>;
+          return <span className="font-bold text-amber-600 text-base">{qty}</span>;
         }
-        return <span className="font-bold text-emerald-600 text-base">{qty}kg</span>;
+        return <span className="font-bold text-emerald-600 text-base">{qty}</span>;
       },
     },
     {
@@ -224,7 +224,7 @@ const Inventory = () => {
       type: "number",
       align: "center",
       renderCell: (params) => (
-        <div className="font-bold text-lg text-emerald-600">{params.row.quantity}kg</div>
+        <div className="font-bold text-lg text-emerald-600">{params.row.quantity}</div>
       ),
     },
     {
@@ -234,7 +234,7 @@ const Inventory = () => {
       type: "number",
       align: "center",
       renderCell: (params) => (
-        <div className="text-sm font-semibold text-gray-700">{params.row.reservedQty}kg</div>
+        <div className="text-sm font-semibold text-gray-700">{params.row.reservedQty}</div>
       ),
     },
     {
@@ -244,7 +244,7 @@ const Inventory = () => {
       type: "number",
       align: "center",
       renderCell: (params) => (
-        <div className="text-sm font-medium text-gray-700">{params.row.lowStockLevel}kg</div>
+        <div className="text-sm font-medium text-gray-700">{params.row.lowStockLevel}</div>
       ),
     },
     {
@@ -339,7 +339,6 @@ const Inventory = () => {
         setEditingStockId(null);
       } else {
         await createStock({
-          storeId,
           productId: stockFormData.productId,
           quantity: stockFormData.quantity,
           lowStockLevel: stockFormData.lowStockLevel,
@@ -941,7 +940,7 @@ const Inventory = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Current Quantity (kg) *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Current Quantity *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -953,7 +952,7 @@ const Inventory = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Low Stock Level (kg)</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Low Stock Level</label>
                   <input
                     type="number"
                     step="0.01"

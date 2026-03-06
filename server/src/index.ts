@@ -29,6 +29,7 @@ import salesOrderRoutes from "./routes/salesOrderRoutes";
 import invoiceRoutes from "./routes/invoiceRoutes";
 import stockRoutes from "./routes/stockRoutes";
 import reportRoutes from "./routes/reportRoutes";
+import authRoutes from "./routes/authRoutes";
 
 const app = express();
 app.use(express.json());
@@ -59,6 +60,7 @@ app.get("/health/db", async (req, res) => {            //http://localhost:8000/h
 
 
 /* ROUTES */
+app.use("/auth", authRoutes); // http://localhost:5000/auth
 app.use("/dashboard", dashboardRoutes); // http://localhost:5000/dashboard
 app.use("/products", productRoutes); // http://localhost:5000/products
 app.use("/users", userRoutes); // http://localhost:5000/users

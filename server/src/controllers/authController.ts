@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { prisma } from "../lib/prisma";
-
-
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import { v4 as uuidv4 } from "uuid";
 
 const supabase = createClient(
   process.env.SUPABASE_URL || "",
@@ -10,7 +11,7 @@ const supabase = createClient(
 );
 
 /**
- * Register new user (Accountant signup)
+ * Register new user (Local + Supabase)
  */
 export const registerAccountant = async (
   req: Request,
@@ -24,48 +25,53 @@ export const registerAccountant = async (
       return;
     }
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          role: "accountant",
-          name,
-          storeId,
-        },
-      },
+    // Check if user already exists locally
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
     });
 
-    if (authError) {
-      res.status(400).json({ error: authError.message });
+    if (existingUser) {
+      res.status(400).json({ error: "User already exists" });
       return;
     }
 
-    if (!authData.user) {
-      res.status(400).json({ error: "Failed to create user" });
-      return;
-    }
+    // Hash password for local storage
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    await prisma.user.upsert({
-      where: { id: authData.user.id },
-      update: {
+    // Create user in local database
+    const newUser = await prisma.user.create({
+      data: {
+        id: uuidv4(),
         name,
         email,
-      },
-      create: {
-        id: authData.user.id,
-        name,
-        email,
-        password: "", // Password handled by Supabase
+        password: hashedPassword,
         role: "ACCOUNTANT",
       },
     });
 
+    // Optionally try to create in Supabase (non-blocking)
+    try {
+      await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            role: "accountant",
+            name,
+            storeId,
+          },
+        },
+      });
+    } catch (supabaseError) {
+      console.log("Supabase registration failed (non-critical):", supabaseError);
+    }
+
     res.status(201).json({
-      message: "Registration successful. Please check your email to confirm.",
+      message: "Registration successful",
       user: {
-        id: authData.user.id,
-        email: authData.user.email,
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
         role: "accountant",
       },
     });
@@ -76,7 +82,7 @@ export const registerAccountant = async (
 };
 
 /**
- * Login
+ * Login (Local Authentication)
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -87,34 +93,66 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    // Try local authentication first
+    const dbUser = await prisma.user.findUnique({
+      where: { email },
     });
 
-    if (error || !data.user || !data.session) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
+    if (dbUser && dbUser.password) {
+      // Local user exists, verify password
+      const isValidPassword = await bcrypt.compare(password, dbUser.password);
+      if (isValidPassword) {
+        // Generate JWT token
+        const token = jwt.sign(
+          { userId: dbUser.id, email: dbUser.email, role: dbUser.role },
+          process.env.JWT_SECRET || "fallback_secret",
+          { expiresIn: "24h" }
+        );
+
+        res.status(200).json({
+          message: "Login successful",
+          token,
+          user: {
+            id: dbUser.id,
+            email: dbUser.email,
+            name: dbUser.name,
+            role: dbUser.role,
+          },
+        });
+        return;
+      }
     }
 
-    const dbUser = await prisma.user.findUnique({
-      where: { id: data.user.id },
-    });
+    // Fallback to Supabase authentication
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    const userRole =
-      (data.user.user_metadata?.role as "admin" | "accountant") ||
-      "accountant";
+      if (error || !data.user || !data.session) {
+        res.status(401).json({ error: "Invalid credentials" });
+        return;
+      }
 
-    res.status(200).json({
-      message: "Login successful",
-      token: data.session.access_token,
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: dbUser?.name || data.user.user_metadata?.name,
-        role: userRole,
-      },
-    });
+      const userRole =
+        (data.user.user_metadata?.role as "admin" | "accountant") ||
+        "accountant";
+
+      res.status(200).json({
+        message: "Login successful",
+        token: data.session.access_token,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          name: dbUser?.name || data.user.user_metadata?.name,
+          role: userRole,
+        },
+      });
+    } catch (supabaseError) {
+      console.error("Supabase login error:", supabaseError);
+      res.status(401).json({ error: "Invalid credentials" });
+    }
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Login failed" });

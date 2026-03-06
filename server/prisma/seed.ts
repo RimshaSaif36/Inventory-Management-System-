@@ -1,6 +1,10 @@
+import dotenv from "dotenv";
+import path from "path";
+// Load environment variables first
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
-import path from "path";
 const prisma = new PrismaClient();
 
 async function deleteAllData(orderedFileNames: string[]) {

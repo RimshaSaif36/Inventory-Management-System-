@@ -25,36 +25,48 @@ const LoginPage = () => {
     setLoading(true);
     setError(null);
     try {
+      // Try the server login API first
+      const response = await apiClient.post('/auth/login', {
+        email,
+        password
+      });
+      
+      if (response.data && response.data.user) {
+        const userData = {
+          id: response.data.user.id,
+          email: response.data.user.email,
+          name: response.data.user.name,
+          role: response.data.user.role.toUpperCase(),
+        };
+
+        dispatch(setUser(userData));
+        router.push("/dashboard");
+        return;
+      }
+
+      // Fallback to Supabase
       const { data, error: authError } = await login(email, password);
       if (authError) {
         setError(authError.message || "Login failed");
         setLoading(false);
       } else if (data.user && data.session) {
-        // Successful auth with Supabase
-        try {
-          const userData = {
-            id: data.user.id,
-            email: data.user.email || email,
-            name: data.user.user_metadata?.name || "",
-            role: data.user.user_metadata?.role?.toUpperCase() || "ACCOUNTANT",
-            storeId: data.user.user_metadata?.storeId || "",
-          };
+        const userData = {
+          id: data.user.id,
+          email: data.user.email || email,
+          name: data.user.user_metadata?.name || "",
+          role: data.user.user_metadata?.role?.toUpperCase() || "ACCOUNTANT",
+          storeId: data.user.user_metadata?.storeId || "",
+        };
 
-          dispatch(setUser(userData));
-
-          // Redirect to dashboard after successful login
-          router.push("/dashboard");
-        } catch (err: any) {
-          console.error("Failed to process login:", err);
-          setError("Failed to process login");
-          setLoading(false);
-        }
+        dispatch(setUser(userData));
+        router.push("/dashboard");
       } else {
         setError("Login failed");
         setLoading(false);
       }
     } catch (err: any) {
-      setError(err?.message || "Login failed");
+      console.error("Login failed:", err);
+      setError(err?.response?.data?.error || err?.message || "Login failed");
       setLoading(false);
     }
   };

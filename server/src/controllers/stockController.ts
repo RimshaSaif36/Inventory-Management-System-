@@ -6,11 +6,11 @@ export const createStock = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { storeId, productId, quantity, lowStockLevel } = req.body;
+    const { productId, quantity, lowStockLevel } = req.body;
 
     // Validate required fields
-    if (!storeId || !productId || quantity === undefined) {
-      res.status(400).json({ message: "Store ID, Product ID, and quantity are required" });
+    if (!productId || quantity === undefined) {
+      res.status(400).json({ message: "Product ID and quantity are required" });
       return;
     }
 
@@ -24,25 +24,39 @@ export const createStock = async (
       return;
     }
 
-    // Check if stock already exists for this store-product combo
+    // Get or create default store
+    let defaultStore = await prisma.store.findFirst({
+      where: { name: "Default Store" },
+    });
+
+    if (!defaultStore) {
+      defaultStore = await prisma.store.create({
+        data: {
+          name: "Default Store",
+          location: "Main Warehouse",
+        },
+      });
+    }
+
+    // Check if stock already exists for this product
     const existingStock = await prisma.stock.findUnique({
       where: {
         storeId_productId: {
-          storeId,
+          storeId: defaultStore.id,
           productId,
         },
       },
     });
 
     if (existingStock) {
-      res.status(400).json({ message: "Stock entry already exists for this product in this store" });
+      res.status(400).json({ message: "Stock entry already exists for this product" });
       return;
     }
 
     // Create stock entry
     const stock = await prisma.stock.create({
       data: {
-        storeId,
+        storeId: defaultStore.id,
         productId,
         quantity: Number(quantity),
         lowStockLevel: lowStockLevel ? Number(lowStockLevel) : 5,

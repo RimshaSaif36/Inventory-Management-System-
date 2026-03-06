@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError, AxiosResponse } from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -12,21 +12,47 @@ const axiosInstance: AxiosInstance = axios.create({
 
 // Add request interceptor to include auth headers
 axiosInstance.interceptors.request.use(
-  (config) => {
-    // Get user data from localStorage
-    const userStr = localStorage.getItem("persist:root");
-    if (userStr) {
+  async (config) => {
+    if (typeof window !== "undefined") {
       try {
-        const persistedState = JSON.parse(userStr);
-        const userState = JSON.parse(persistedState.user || "{}");
-        const currentUser = userState?.currentUser;
+        // Try to get token from Supabase session first
+        const { getSession } = await import('./authService');
+        const session = await getSession();
         
-        if (currentUser && currentUser.id) {
-          config.headers["user-id"] = currentUser.id;
-          config.headers["user-role"] = currentUser.role;
+        if (session?.access_token) {
+          config.headers["Authorization"] = `Bearer ${session.access_token}`;
+          console.log("ApiClient - Added Authorization header with Supabase token");
+        } else {
+          // Fallback to Redux persisted state
+          const persistedRoot = localStorage.getItem("persist:root");
+          console.log("ApiClient - persist:root in localStorage:", persistedRoot);
+          if (persistedRoot) {
+            const parsedRoot = JSON.parse(persistedRoot);
+            console.log("ApiClient - Parsed root:", parsedRoot);
+            if (parsedRoot.user) {
+              const userState = JSON.parse(parsedRoot.user);
+              console.log("ApiClient - User state:", userState);
+              const user = userState.currentUser;
+              console.log("ApiClient - Current user:", user);
+              if (user && user.id) {
+                config.headers["user-id"] = user.id;
+                config.headers["user-role"] = user.role;
+                console.log("ApiClient - Added headers:", {
+                  "user-id": user.id,
+                  "user-role": user.role
+                });
+              } else {
+                console.log("ApiClient - No user or user ID found");
+              }
+            } else {
+              console.log("ApiClient - No user in parsedRoot");
+            }
+          } else {
+            console.log("ApiClient - No persist:root found in localStorage");
+          }
         }
       } catch (e) {
-        // Ignore parsing errors
+        console.error("Failed to add authentication headers", e);
       }
     }
     return config;

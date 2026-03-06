@@ -30,7 +30,7 @@ const LoginPage = () => {
         email,
         password
       });
-      
+
       if (response.data && response.data.user) {
         const userData = {
           id: response.data.user.id,

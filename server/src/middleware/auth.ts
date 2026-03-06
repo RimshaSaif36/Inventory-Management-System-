@@ -19,23 +19,23 @@ export const authMiddleware = async (
 ): Promise<void> => {
   try {
     console.log("Auth middleware - Headers:", req.headers);
-    
+
     // Try to get token from Authorization header first
     const authHeader = req.headers.authorization;
     let token = null;
-    
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7);
     }
 
     // Fallback to user-id header for backward compatibility
     const userId = req.headers["user-id"]?.toString();
-    
+
     // If we have a token, validate it with Supabase
     if (token) {
       console.log("Auth middleware - Validating JWT token");
       const { data: { user }, error } = await supabase.auth.getUser(token);
-      
+
       if (error || !user) {
         console.log("Auth middleware - Invalid JWT token:", error?.message);
         res.status(401).json({ message: "Invalid or expired token" });
@@ -59,7 +59,7 @@ export const authMiddleware = async (
       next();
       return;
     }
-    
+
     // Fallback to user-id header method
     if (userId) {
       console.log("Auth middleware - Using user-id header fallback");

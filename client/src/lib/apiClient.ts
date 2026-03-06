@@ -18,7 +18,7 @@ axiosInstance.interceptors.request.use(
         // Try to get token from Supabase session first
         const { getSession } = await import('./authService');
         const session = await getSession();
-        
+
         if (session?.access_token) {
           config.headers["Authorization"] = `Bearer ${session.access_token}`;
           console.log("ApiClient - Added Authorization header with Supabase token");

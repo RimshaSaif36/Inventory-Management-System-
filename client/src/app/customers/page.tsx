@@ -155,11 +155,10 @@ export default function CustomersPage() {
                     <td className="border p-2">{customer.email || "-"}</td>
                     <td className="border p-2">
                       <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          customer.customerType === "POS"
+                        className={`text-xs px-2 py-1 rounded-full ${customer.customerType === "POS"
                             ? "bg-blue-100 text-blue-700"
                             : "bg-purple-100 text-purple-700"
-                        }`}
+                          }`}
                       >
                         {customer.customerType === "POS" ? "POS" : "Sales Order"}
                       </span>

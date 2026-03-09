@@ -106,11 +106,10 @@ export default function SalesOrdersPage() {
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`px-4 py-2 rounded text-sm ${
-              statusFilter === status
+            className={`px-4 py-2 rounded text-sm ${statusFilter === status
                 ? "bg-blue-600 text-white"
                 : "bg-gray-200 hover:bg-gray-300"
-            }`}
+              }`}
           >
             {status}
           </button>

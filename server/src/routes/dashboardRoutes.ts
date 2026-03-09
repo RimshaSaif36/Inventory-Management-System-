@@ -1,8 +1,8 @@
 import { Router } from "express";
 import {
-  getDashboardMetrics,
-  getEmployeeSalesReport,
-  getAdminOverview,
+    getDashboardMetrics,
+    getEmployeeSalesReport,
+    getAdminOverview,
 } from "../controllers/dashboardController";
 import { authMiddleware, adminOnly, adminOrAccountant } from "../middleware/auth";
 

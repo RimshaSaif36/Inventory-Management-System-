@@ -213,9 +213,8 @@ export default function POSSalesPage() {
                   <button
                     key={method}
                     onClick={() => setPaymentMethod(method)}
-                    className={`px-4 py-2 rounded ${
-                      paymentMethod === method ? "bg-blue-600 text-white" : "bg-gray-200"
-                    }`}
+                    className={`px-4 py-2 rounded ${paymentMethod === method ? "bg-blue-600 text-white" : "bg-gray-200"
+                      }`}
                   >
                     {method}
                   </button>

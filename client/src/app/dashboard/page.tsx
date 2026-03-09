@@ -182,13 +182,12 @@ const AdminDashboard = () => {
                       </td>
                       <td className="p-3">
                         <span
-                          className={`text-xs px-2 py-1 rounded-full ${
-                            emp.role === "ADMIN"
+                          className={`text-xs px-2 py-1 rounded-full ${emp.role === "ADMIN"
                               ? "bg-purple-100 text-purple-700"
                               : emp.role === "SALESMAN"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-blue-100 text-blue-700"
-                          }`}
+                                ? "bg-green-100 text-green-700"
+                                : "bg-blue-100 text-blue-700"
+                            }`}
                         >
                           {emp.role}
                         </span>
@@ -321,11 +320,10 @@ const SalesmanDashboard = () => {
                     </td>
                     <td className="p-3 text-center">
                       <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          sale.approved
+                        className={`text-xs px-2 py-1 rounded-full ${sale.approved
                             ? "bg-green-100 text-green-700"
                             : "bg-yellow-100 text-yellow-700"
-                        }`}
+                          }`}
                       >
                         {sale.approved ? "Yes" : "Pending"}
                       </span>

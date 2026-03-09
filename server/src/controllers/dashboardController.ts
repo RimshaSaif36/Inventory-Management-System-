@@ -39,8 +39,8 @@ export const getDashboardMetrics = async (
       changePercentage:
         idx > 0
           ? ((salesByDate[date] - salesByDate[salesDates[idx - 1]]) /
-              (salesByDate[salesDates[idx - 1]] || 1)) *
-            100
+            (salesByDate[salesDates[idx - 1]] || 1)) *
+          100
           : 0,
       date,
     }));
@@ -67,8 +67,8 @@ export const getDashboardMetrics = async (
       changePercentage:
         idx > 0
           ? ((purchasesByDate[date] - purchasesByDate[purchaseDates[idx - 1]]) /
-              (purchasesByDate[purchaseDates[idx - 1]] || 1)) *
-            100
+            (purchasesByDate[purchaseDates[idx - 1]] || 1)) *
+          100
           : 0,
       date,
     }));

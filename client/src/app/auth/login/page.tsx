@@ -25,48 +25,52 @@ const LoginPage = () => {
     setLoading(true);
     setError(null);
     try {
-      // Try the server login API first
-      const response = await apiClient.post('/auth/login', {
-        email,
-        password
-      });
+      // Step 1: Authenticate via Supabase
+      const { data, error: authError } = await login(email, password);
 
-      if (response.data && response.data.user) {
-        const userData = {
-          id: response.data.user.id,
-          email: response.data.user.email,
-          name: response.data.user.name,
-          role: response.data.user.role.toUpperCase(),
-        };
-
-        dispatch(setUser(userData));
-        router.push("/dashboard");
+      if (authError) {
+        setError(authError.message || "Invalid email or password");
+        setLoading(false);
         return;
       }
 
-      // Fallback to Supabase
-      const { data, error: authError } = await login(email, password);
-      if (authError) {
-        setError(authError.message || "Login failed");
+      if (!data.user || !data.session) {
+        setError("Login failed. Please try again.");
         setLoading(false);
-      } else if (data.user && data.session) {
+        return;
+      }
+
+      // Step 2: Get user role from backend - pass token directly
+      try {
+        const response = await apiClient.get("/auth/me", {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        });
         const userData = {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: data.user.user_metadata?.name || "",
-          role: data.user.user_metadata?.role?.toUpperCase() || "ACCOUNTANT",
-          storeId: data.user.user_metadata?.storeId || "",
+          id: response.data.id,
+          email: response.data.email,
+          name: response.data.name,
+          role: response.data.role?.toUpperCase() as "ADMIN" | "ACCOUNTANT" || "ACCOUNTANT",
+          storeId: response.data.storeId || "",
         };
 
         dispatch(setUser(userData));
-        router.push("/dashboard");
-      } else {
-        setError("Login failed");
-        setLoading(false);
+      } catch (apiError: any) {
+        // If backend unreachable, use Supabase metadata as fallback
+        const userData = {
+          id: data.user.id,
+          email: data.user.email || email,
+          name: data.user.user_metadata?.name || email.split("@")[0],
+          role: (data.user.user_metadata?.role?.toUpperCase() as "ADMIN" | "ACCOUNTANT") || "ACCOUNTANT",
+          storeId: data.user.user_metadata?.storeId || "",
+        };
+        dispatch(setUser(userData));
       }
+
+      // Step 3: Redirect to dashboard
+      router.push("/dashboard");
     } catch (err: any) {
       console.error("Login failed:", err);
-      setError(err?.response?.data?.error || err?.message || "Login failed");
+      setError(err?.message || "Login failed. Please try again.");
       setLoading(false);
     }
   };

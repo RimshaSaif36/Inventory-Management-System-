@@ -7,9 +7,6 @@ import Navbar from "@/app/(components)/Navbar";
 import Sidebar from "@/app/(components)/Sidebar";
 import StoreProvider, { useAppSelector } from "./redux";
 import { getSession } from "@/lib/authService";
-import { PersistGate } from "redux-persist/integration/react";
-import { persistStore } from "redux-persist";
-import { makeStore } from "./redux";
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const isSidebarCollapsed = useAppSelector(
@@ -84,7 +81,7 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Check authentication
-    (async () => {
+    const checkAuth = async () => {
       try {
         // Prefer Redux user state if available (already hydrated from localStorage)
         if (currentUser) {
@@ -105,10 +102,19 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
         setIsAuthenticated(false);
         router.replace("/auth/login");
       }
-    })();
+    };
+
+    // Small delay to allow Redux PersistGate to hydrate from localStorage
+    const timer = setTimeout(checkAuth, 100);
+    return () => clearTimeout(timer);
   }, [pathname, isPublicRoute, currentUser, router]);
 
-  // Show nothing while checking authentication
+  // For public routes, render immediately without any loading state
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
+
+  // Show loading while checking authentication
   if (isAuthenticated === null) {
     return (
       <div className="flex items-center justify-center w-full min-h-screen bg-white">
@@ -118,11 +124,6 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
         </div>
       </div>
     );
-  }
-
-  // If public route (login, register, etc), show children without layout
-  if (isPublicRoute) {
-    return children;
   }
 
   // If authenticated, show full layout with sidebar and navbar
@@ -135,19 +136,7 @@ const DashboardWrapper = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppWrapper = ({ children }: { children: React.ReactNode }) => {
-  const storeRef = React.useRef<any>();
-  if (!storeRef.current) {
-    storeRef.current = makeStore();
-  }
-  const persistor = persistStore(storeRef.current);
-
-  return (
-    <StoreProvider>
-      <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
-        <DashboardWrapper>{children}</DashboardWrapper>
-      </PersistGate>
-    </StoreProvider>
-  );
+  return <DashboardWrapper>{children}</DashboardWrapper>;
 };
 
 export default AppWrapper;

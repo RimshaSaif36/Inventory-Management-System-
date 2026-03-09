@@ -10,49 +10,19 @@ const axiosInstance: AxiosInstance = axios.create({
   },
 });
 
-// Add request interceptor to include auth headers
+// Add request interceptor to include Supabase JWT token
 axiosInstance.interceptors.request.use(
   async (config) => {
     if (typeof window !== "undefined") {
       try {
-        // Try to get token from Supabase session first
         const { getSession } = await import('./authService');
         const session = await getSession();
 
         if (session?.access_token) {
           config.headers["Authorization"] = `Bearer ${session.access_token}`;
-          console.log("ApiClient - Added Authorization header with Supabase token");
-        } else {
-          // Fallback to Redux persisted state
-          const persistedRoot = localStorage.getItem("persist:root");
-          console.log("ApiClient - persist:root in localStorage:", persistedRoot);
-          if (persistedRoot) {
-            const parsedRoot = JSON.parse(persistedRoot);
-            console.log("ApiClient - Parsed root:", parsedRoot);
-            if (parsedRoot.user) {
-              const userState = JSON.parse(parsedRoot.user);
-              console.log("ApiClient - User state:", userState);
-              const user = userState.currentUser;
-              console.log("ApiClient - Current user:", user);
-              if (user && user.id) {
-                config.headers["user-id"] = user.id;
-                config.headers["user-role"] = user.role;
-                console.log("ApiClient - Added headers:", {
-                  "user-id": user.id,
-                  "user-role": user.role
-                });
-              } else {
-                console.log("ApiClient - No user or user ID found");
-              }
-            } else {
-              console.log("ApiClient - No user in parsedRoot");
-            }
-          } else {
-            console.log("ApiClient - No persist:root found in localStorage");
-          }
         }
       } catch (e) {
-        console.error("Failed to add authentication headers", e);
+        console.error("Failed to add authentication header", e);
       }
     }
     return config;
@@ -67,9 +37,19 @@ axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized access
+      // Don't trigger logout if we're already on an auth page (prevents login loop)
+      if (typeof window !== "undefined" && window.location.pathname.startsWith("/auth/")) {
+        return Promise.reject(error);
+      }
+      // Clear session and redirect to login
+      try {
+        const { logout } = await import('./authService');
+        await logout();
+      } catch (_) {
+        // ignore logout errors
+      }
       localStorage.removeItem("persist:root");
       window.location.href = "/auth/login";
     }

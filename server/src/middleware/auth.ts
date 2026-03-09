@@ -12,82 +12,56 @@ export interface AuthenticatedRequest extends Request {
   user?: any;
 }
 
+/**
+ * Auth Middleware - Validates Supabase JWT token only.
+ * No fallback to user-id headers (insecure).
+ */
 export const authMiddleware = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    console.log("Auth middleware - Headers:", req.headers);
-
-    // Try to get token from Authorization header first
     const authHeader = req.headers.authorization;
-    let token = null;
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
-
-    // Fallback to user-id header for backward compatibility
-    const userId = req.headers["user-id"]?.toString();
-
-    // If we have a token, validate it with Supabase
-    if (token) {
-      console.log("Auth middleware - Validating JWT token");
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-
-      if (error || !user) {
-        console.log("Auth middleware - Invalid JWT token:", error?.message);
-        res.status(401).json({ message: "Invalid or expired token" });
-        return;
-      }
-
-      // Find user in database
-      const dbUser = await prisma.user.findUnique({
-        where: { id: user.id },
-      });
-
-      if (!dbUser) {
-        console.log("Auth middleware - User not found in database");
-        res.status(401).json({ message: "User not found" });
-        return;
-      }
-
-      req.userId = user.id;
-      req.user = dbUser;
-      console.log("Auth middleware - JWT validation successful");
-      next();
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      res.status(401).json({ message: "Authentication required. Provide a valid Bearer token." });
       return;
     }
 
-    // Fallback to user-id header method
-    if (userId) {
-      console.log("Auth middleware - Using user-id header fallback");
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
+    const token = authHeader.substring(7);
 
-      if (!user) {
-        console.log("Auth middleware - User not found in database");
-        res.status(401).json({ message: "User not found" });
-        return;
-      }
+    // Validate JWT token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
 
-      req.userId = userId;
-      req.user = user;
-      console.log("Auth middleware - Header validation successful");
-      next();
+    if (error || !user) {
+      res.status(401).json({ message: "Invalid or expired token" });
       return;
     }
 
-    // No authentication provided
-    console.log("Auth middleware - No authentication provided");
-    res.status(401).json({ message: "Authentication required" });
-    return;
+    // Find user in local database to get role
+    // First try by Supabase ID, then fallback to email (for users created before Supabase integration)
+    let dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+    });
+
+    if (!dbUser && user.email) {
+      dbUser = await prisma.user.findUnique({
+        where: { email: user.email },
+      });
+    }
+
+    if (!dbUser) {
+      res.status(401).json({ message: "User not found in system" });
+      return;
+    }
+
+    req.userId = dbUser.id;
+    req.user = dbUser;
+    next();
   } catch (error) {
     console.error("Auth middleware error:", error);
     res.status(500).json({ message: "Internal server error" });
-    return;
   }
 };
 

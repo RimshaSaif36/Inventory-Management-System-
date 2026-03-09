@@ -1,17 +1,22 @@
 import { Request, Response } from "express";
 import { createClient } from "@supabase/supabase-js";
 import { prisma } from "../lib/prisma";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
-import { v4 as uuidv4 } from "uuid";
 
+// Use ANON_KEY for auth verification (safe for server-side token validation)
 const supabase = createClient(
   process.env.SUPABASE_URL || "",
   process.env.SUPABASE_ANON_KEY || ""
 );
 
+// Use SERVICE_ROLE_KEY for admin operations (creating users, etc.)
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+);
+
 /**
- * Register new user (Local + Supabase)
+ * Register new accountant (Supabase Auth + local User table)
+ * Only admin can register new users
  */
 export const registerAccountant = async (
   req: Request,
@@ -35,36 +40,33 @@ export const registerAccountant = async (
       return;
     }
 
-    // Hash password for local storage
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user in local database
-    const newUser = await prisma.user.create({
-      data: {
-        id: uuidv4(),
-        name,
-        email,
-        password: hashedPassword,
+    // Create user in Supabase Auth (password is handled by Supabase only)
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
         role: "ACCOUNTANT",
+        name,
+        storeId,
       },
     });
 
-    // Optionally try to create in Supabase (non-blocking)
-    try {
-      await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            role: "accountant",
-            name,
-            storeId,
-          },
-        },
-      });
-    } catch (supabaseError) {
-      console.log("Supabase registration failed (non-critical):", supabaseError);
+    if (authError || !authData.user) {
+      res.status(400).json({ error: authError?.message || "Failed to create user in Supabase" });
+      return;
     }
+
+    // Create user in local database (NO password stored)
+    const newUser = await prisma.user.create({
+      data: {
+        id: authData.user.id, // Use Supabase auth.users id
+        name,
+        email,
+        role: "ACCOUNTANT",
+        storeId: storeId || null,
+      },
+    });
 
     res.status(201).json({
       message: "Registration successful",
@@ -72,7 +74,7 @@ export const registerAccountant = async (
         id: newUser.id,
         email: newUser.email,
         name: newUser.name,
-        role: "accountant",
+        role: newUser.role,
       },
     });
   } catch (error) {
@@ -82,7 +84,12 @@ export const registerAccountant = async (
 };
 
 /**
- * Login (Local Authentication)
+ * Login (Supabase Auth only - no local password verification)
+ * 
+ * Flow:
+ * 1. Supabase Auth verifies email + password
+ * 2. On success, check local User table for role
+ * 3. Return Supabase session token + user role
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -93,66 +100,59 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Try local authentication first
-    const dbUser = await prisma.user.findUnique({
-      where: { email },
+    // Authenticate via Supabase Auth ONLY
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    if (dbUser && dbUser.password) {
-      // Local user exists, verify password
-      const isValidPassword = await bcrypt.compare(password, dbUser.password);
-      if (isValidPassword) {
-        // Generate JWT token
-        const token = jwt.sign(
-          { userId: dbUser.id, email: dbUser.email, role: dbUser.role },
-          process.env.JWT_SECRET || "fallback_secret",
-          { expiresIn: "24h" }
-        );
-
-        res.status(200).json({
-          message: "Login successful",
-          token,
-          user: {
-            id: dbUser.id,
-            email: dbUser.email,
-            name: dbUser.name,
-            role: dbUser.role,
-          },
-        });
-        return;
-      }
+    if (error || !data.user || !data.session) {
+      res.status(401).json({ error: "Invalid email or password" });
+      return;
     }
 
-    // Fallback to Supabase authentication
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+    // Get role from local User table
+    const dbUser = await prisma.user.findUnique({
+      where: { id: data.user.id },
+    });
+
+    // If user exists in Supabase but not in local DB, sync them
+    if (!dbUser) {
+      const newUser = await prisma.user.create({
+        data: {
+          id: data.user.id,
+          name: data.user.user_metadata?.name || email.split("@")[0],
+          email: data.user.email || email,
+          role: (data.user.user_metadata?.role as string)?.toUpperCase() || "ACCOUNTANT",
+          storeId: data.user.user_metadata?.storeId || null,
+        },
       });
-
-      if (error || !data.user || !data.session) {
-        res.status(401).json({ error: "Invalid credentials" });
-        return;
-      }
-
-      const userRole =
-        (data.user.user_metadata?.role as "admin" | "accountant") ||
-        "accountant";
 
       res.status(200).json({
         message: "Login successful",
         token: data.session.access_token,
         user: {
-          id: data.user.id,
-          email: data.user.email,
-          name: dbUser?.name || data.user.user_metadata?.name,
-          role: userRole,
+          id: newUser.id,
+          email: newUser.email,
+          name: newUser.name,
+          role: newUser.role,
+          storeId: newUser.storeId,
         },
       });
-    } catch (supabaseError) {
-      console.error("Supabase login error:", supabaseError);
-      res.status(401).json({ error: "Invalid credentials" });
+      return;
     }
+
+    res.status(200).json({
+      message: "Login successful",
+      token: data.session.access_token,
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        role: dbUser.role,
+        storeId: dbUser.storeId,
+      },
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Login failed" });
@@ -167,8 +167,7 @@ export const getCurrentUser = async (
   res: Response
 ): Promise<void> => {
   try {
-    // extend Request with user in middleware; fallback to any here
-    const requestWithUser = req as Request & { user?: { id: string; role?: string } };
+    const requestWithUser = req as Request & { user?: { id: string; role?: string; storeId?: string } };
 
     if (!requestWithUser.user) {
       res.status(401).json({ error: "User not authenticated" });
@@ -188,7 +187,8 @@ export const getCurrentUser = async (
       id: user.id,
       name: user.name,
       email: user.email,
-      role: requestWithUser.user.role,
+      role: user.role,
+      storeId: user.storeId,
     });
   } catch (error) {
     console.error("Get user error:", error);

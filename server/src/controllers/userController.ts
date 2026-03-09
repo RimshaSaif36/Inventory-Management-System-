@@ -1,12 +1,17 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
-import { v4 as uuidv4 } from "uuid";
-import bcrypt from "bcryptjs";
+import { createClient } from "@supabase/supabase-js";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
   user?: any;
 }
+
+// Admin client for user management
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+);
 
 export const getUsers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -27,20 +32,20 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
 
 export const getCurrentUser = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.headers["user-id"]?.toString();
-
-    if (!userId) {
-      res.status(401).json({ message: "User ID not provided" });
+    // Use authenticated user from middleware
+    if (!req.user) {
+      res.status(401).json({ message: "User not authenticated" });
       return;
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: req.user.id },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        storeId: true,
       },
     });
 
@@ -77,16 +82,29 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Create user in Supabase Auth (password handled by Supabase only)
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        role: role.toUpperCase(),
+        name,
+      },
+    });
 
+    if (authError || !authData.user) {
+      res.status(400).json({ message: authError?.message || "Failed to create user" });
+      return;
+    }
+
+    // Create user in local DB (NO password stored)
     const newUser = await prisma.user.create({
       data: {
-        id: uuidv4(),
+        id: authData.user.id,
         name,
         email,
-        role,
-        password: hashedPassword,
+        role: role.toUpperCase(),
       },
       select: {
         id: true,

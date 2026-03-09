@@ -14,8 +14,8 @@ model User {
   id       String  @id
   name     String
   email    String  @unique
-  password String
   role     String
+  storeId  String?
 
   purchases   Purchase[]
   sales       Sale[]

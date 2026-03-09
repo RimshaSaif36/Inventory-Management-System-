@@ -1,12 +1,13 @@
 "use client";
 
-import { useCreateSeriesMutation, useUpdateSeriesMutation, useGetCategoriesQuery } from "@/state/api";
+import { useCreateSeriesMutation, useUpdateSeriesMutation, useGetCategoriesQuery, useGetBrandsQuery } from "@/state/api";
 import { ChangeEvent, FormEvent, useState, useEffect } from "react";
 
 type SeriesFormData = {
     name: string;
     description: string;
     categoryId: string;
+    brandId: string;
 };
 
 type Props = {
@@ -20,25 +21,30 @@ const CreateSeriesModal = ({ isOpen, onClose, series }: Props) => {
         name: "",
         description: "",
         categoryId: "",
+        brandId: "",
     });
 
     const [createSeries, { isLoading: isCreating }] = useCreateSeriesMutation();
     const [updateSeries, { isLoading: isUpdating }] = useUpdateSeriesMutation();
-    const { data: categoriesResponse } = useGetCategoriesQuery(undefined);
+    const { data: brands } = useGetBrandsQuery(undefined);
+    const { data: categoriesResponse } = useGetCategoriesQuery({ brandId: formData.brandId });
     const categories = categoriesResponse?.data || [];
 
     useEffect(() => {
         if (series) {
+            const category = categories.find(c => c.id === series.categoryId);
             setFormData({
                 name: series.name || "",
                 description: series.description || "",
                 categoryId: series.categoryId || "",
+                brandId: category?.brandId || series.category?.brandId || "",
             });
         } else {
             setFormData({
                 name: "",
                 description: "",
                 categoryId: "",
+                brandId: "",
             });
         }
     }, [series]);
@@ -46,19 +52,26 @@ const CreateSeriesModal = ({ isOpen, onClose, series }: Props) => {
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
+        if (!formData.brandId) {
+            alert("Please select a brand");
+            return;
+        }
+
         if (!formData.categoryId) {
             alert("Please select a category");
             return;
         }
 
         try {
+            // Remove brandId before sending to API as it's not part of series model
+            const { brandId, ...seriesData } = formData;
             if (series) {
                 await updateSeries({
                     id: series.id,
-                    data: formData,
+                    data: seriesData,
                 }).unwrap();
             } else {
-                await createSeries(formData).unwrap();
+                await createSeries(seriesData).unwrap();
             }
             onClose();
         } catch (error) {
@@ -71,6 +84,8 @@ const CreateSeriesModal = ({ isOpen, onClose, series }: Props) => {
         setFormData((prev) => ({
             ...prev,
             [name]: value,
+            // Reset categoryId when brand changes
+            ...(name === "brandId" && { categoryId: "" }),
         }));
     };
 
@@ -108,6 +123,24 @@ const CreateSeriesModal = ({ isOpen, onClose, series }: Props) => {
                         required
                     />
 
+                    <label htmlFor="brandId" className={labelCssStyles}>
+                        Brand
+                    </label>
+                    <select
+                        name="brandId"
+                        onChange={handleChange}
+                        value={formData.brandId}
+                        className={inputCssStyles}
+                        required
+                    >
+                        <option value="">Select a brand</option>
+                        {brands?.map((brand) => (
+                            <option key={brand.id} value={brand.id}>
+                                {brand.name}
+                            </option>
+                        ))}
+                    </select>
+
                     <label htmlFor="categoryId" className={labelCssStyles}>
                         Category
                     </label>
@@ -117,11 +150,14 @@ const CreateSeriesModal = ({ isOpen, onClose, series }: Props) => {
                         value={formData.categoryId}
                         className={inputCssStyles}
                         required
+                        disabled={!formData.brandId}
                     >
-                        <option value="">Select a category</option>
+                        <option value="">
+                            {formData.brandId ? "Select a category" : "Select a brand first"}
+                        </option>
                         {categories?.map((category) => (
                             <option key={category.id} value={category.id}>
-                                {category.brand?.name} - {category.name}
+                                {category.name}
                             </option>
                         ))}
                     </select>

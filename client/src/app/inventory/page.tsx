@@ -6,7 +6,9 @@ import {
   useUpdateProductMutation,
   useGetStockByStoreQuery,
   useCreateStockMutation,
-  useUpdateStockMutation
+  useUpdateStockMutation,
+  useGetBrandsQuery,
+  useGetSeriesQuery
 } from "@/state/api";
 import Header from "@/app/(components)/Header";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
@@ -18,6 +20,10 @@ const Inventory = () => {
   const [deleteProduct] = useDeleteProductMutation();
   const [updateProduct] = useUpdateProductMutation();
   const [products, setProducts] = useState<any[]>([]);
+  
+  // Fetch brands and series for dropdowns
+  const { data: brands } = useGetBrandsQuery(undefined);
+  const { data: seriesResponse } = useGetSeriesQuery(undefined);
 
   // Stock Management States
   const user = useAppSelector((state) => state.user.currentUser);
@@ -998,10 +1004,9 @@ const Inventory = () => {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   >
                     <option value="">Select Brand</option>
-                    {productsData?.data?.map((p: any) => p.brand?.id).filter((id: any, idx: any, arr: any) => id && arr.indexOf(id) === idx).map((brandId: any) => {
-                      const brand = productsData?.data?.find((p: any) => p.brand?.id === brandId)?.brand;
-                      return <option key={brandId} value={brandId}>{brand?.name}</option>;
-                    })}
+                    {brands?.map((brand: any) => (
+                      <option key={brand.id} value={brand.id}>{brand.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -1012,10 +1017,9 @@ const Inventory = () => {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   >
                     <option value="">Select Series</option>
-                    {productsData?.data?.map((p: any) => p.series?.id).filter((id: any, idx: any, arr: any) => id && arr.indexOf(id) === idx).map((seriesId: any) => {
-                      const series = productsData?.data?.find((p: any) => p.series?.id === seriesId)?.series;
-                      return <option key={seriesId} value={seriesId}>{series?.name}</option>;
-                    })}
+                    {seriesResponse?.data?.map((series: any) => (
+                      <option key={series.id} value={series.id}>{series.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>

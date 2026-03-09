@@ -20,7 +20,7 @@ const Inventory = () => {
   const [deleteProduct] = useDeleteProductMutation();
   const [updateProduct] = useUpdateProductMutation();
   const [products, setProducts] = useState<any[]>([]);
-  
+
   // Fetch brands and series for dropdowns
   const { data: brands } = useGetBrandsQuery(undefined);
   const { data: seriesResponse } = useGetSeriesQuery(undefined);

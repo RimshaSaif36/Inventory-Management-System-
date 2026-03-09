@@ -20,6 +20,8 @@ import {
   FileText,
   Package,
   BarChart3,
+  Bell,
+  FileCheck,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -70,10 +72,16 @@ const Sidebar = () => {
   const isSidebarCollapsed = useAppSelector(
     (state) => state.global.isSidebarCollapsed
   );
+  const user = useAppSelector((state) => state.user.currentUser);
+  const role = user?.role;
 
   const toggleSidebar = () => {
     dispatch(setIsSidebarCollapsed(!isSidebarCollapsed));
   };
+
+  const isAdmin = role === "ADMIN";
+  const isAccountant = role === "ACCOUNTANT";
+  const isSalesman = role === "SALESMAN";
 
   const sidebarClassNames = `fixed flex flex-col ${isSidebarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
     } bg-white transition-all duration-300 overflow-hidden h-full shadow-md z-40`;
@@ -110,114 +118,183 @@ const Sidebar = () => {
 
       {/* LINKS */}
       <div className="flex-grow mt-8 overflow-y-auto">
-        <SidebarLink
-          href="/dashboard"
-          icon={Layout}
-          label="Dashboard"
-          isCollapsed={isSidebarCollapsed}
-        />
+        {/* Dashboard - Admin sees full admin dashboard */}
+        {(isAdmin || isAccountant) && (
+          <SidebarLink
+            href="/dashboard"
+            icon={Layout}
+            label="Dashboard"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
 
-        {/* Inventory Management Section */}
-        <SidebarLink
-          href="/inventory"
-          icon={Archive}
-          label="Inventory"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/products"
-          icon={Box}
-          label="Products"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/brands"
-          icon={Tag}
-          label="Brands"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/categories"
-          icon={FolderTree}
-          label="Categories"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/series"
-          icon={Package}
-          label="Models"
-          isCollapsed={isSidebarCollapsed}
-        />
+        {/* Inventory & Products - Admin and Accountant */}
+        {(isAdmin || isAccountant) && (
+          <>
+            <SidebarLink
+              href="/inventory"
+              icon={Archive}
+              label="Inventory"
+              isCollapsed={isSidebarCollapsed}
+            />
+            <SidebarLink
+              href="/products"
+              icon={Box}
+              label="Products"
+              isCollapsed={isSidebarCollapsed}
+            />
+            <SidebarLink
+              href="/brands"
+              icon={Tag}
+              label="Brands"
+              isCollapsed={isSidebarCollapsed}
+            />
+            <SidebarLink
+              href="/categories"
+              icon={FolderTree}
+              label="Categories"
+              isCollapsed={isSidebarCollapsed}
+            />
+            <SidebarLink
+              href="/series"
+              icon={Package}
+              label="Models"
+              isCollapsed={isSidebarCollapsed}
+            />
+          </>
+        )}
 
-        {/* Sales Section */}
-        <SidebarLink
-          href="/sales"
-          icon={ShoppingCart}
-          label="POS Sales"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/sales-orders"
-          icon={Clipboard}
-          label="Sales Orders"
-          isCollapsed={isSidebarCollapsed}
-        />
+        {/* Quotations - Accountant creates, Admin views */}
+        {(isAdmin || isAccountant) && (
+          <SidebarLink
+            href="/quotations"
+            icon={FileCheck}
+            label="Quotations"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
 
-        {/* Purchase & Supplier Section */}
-        <SidebarLink
-          href="/suppliers"
-          icon={Truck}
-          label="Suppliers"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/purchases"
-          icon={Package}
-          label="Purchases"
-          isCollapsed={isSidebarCollapsed}
-        />
+        {/* POS Sales - Accountant creates, Admin reviews */}
+        {(isAdmin || isAccountant) && (
+          <SidebarLink
+            href="/sales"
+            icon={ShoppingCart}
+            label="POS Sales"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
 
-        {/* Customer & Employee Section */}
-        <SidebarLink
-          href="/customers"
-          icon={Users}
-          label="Customers"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/employees"
-          icon={User}
-          label="Employees"
-          isCollapsed={isSidebarCollapsed}
-        />
+        {/* Sales Orders - Accountant and Salesman create, Admin views */}
+        {(isAdmin || isAccountant || isSalesman) && (
+          <SidebarLink
+            href="/sales-orders"
+            icon={Clipboard}
+            label="Sales Orders"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
 
-        {/* Financial Section */}
-        <SidebarLink
-          href="/invoices"
-          icon={FileText}
-          label="Invoices"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/reports"
-          icon={BarChart3}
-          label="Reports"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/expenses"
-          icon={CircleDollarSign}
-          label="Expenses"
-          isCollapsed={isSidebarCollapsed}
-        />
+        {/* Suppliers & Purchases - Admin only */}
+        {isAdmin && (
+          <>
+            <SidebarLink
+              href="/suppliers"
+              icon={Truck}
+              label="Suppliers"
+              isCollapsed={isSidebarCollapsed}
+            />
+            <SidebarLink
+              href="/purchases"
+              icon={Package}
+              label="Purchases"
+              isCollapsed={isSidebarCollapsed}
+            />
+          </>
+        )}
 
-        {/* Management Section */}
-        <SidebarLink
-          href="/users"
-          icon={User}
-          label="Users"
-          isCollapsed={isSidebarCollapsed}
-        />
+        {/* Customers - Accountant manages */}
+        {(isAdmin || isAccountant) && (
+          <SidebarLink
+            href="/customers"
+            icon={Users}
+            label="Customers"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
+
+        {/* Employees - Admin only */}
+        {isAdmin && (
+          <SidebarLink
+            href="/employees"
+            icon={User}
+            label="Employees"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
+
+        {/* Invoices - Admin & Accountant */}
+        {(isAdmin || isAccountant) && (
+          <SidebarLink
+            href="/invoices"
+            icon={FileText}
+            label="Invoices"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
+
+        {/* Reports - Admin & Accountant */}
+        {(isAdmin || isAccountant) && (
+          <SidebarLink
+            href="/reports"
+            icon={BarChart3}
+            label="Reports"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
+
+        {/* Expenses - Admin & Accountant */}
+        {(isAdmin || isAccountant) && (
+          <SidebarLink
+            href="/expenses"
+            icon={CircleDollarSign}
+            label="Expenses"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
+
+        {/* Notifications - Admin only */}
+        {isAdmin && (
+          <SidebarLink
+            href="/notifications"
+            icon={Bell}
+            label="Notifications"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
+
+        {/* User Management - Admin only */}
+        {isAdmin && (
+          <SidebarLink
+            href="/users"
+            icon={User}
+            label="Users"
+            isCollapsed={isSidebarCollapsed}
+          />
+        )}
+
+        {/* Salesman - minimal menu */}
+        {isSalesman && (
+          <>
+            <SidebarLink
+              href="/dashboard"
+              icon={Layout}
+              label="My Dashboard"
+              isCollapsed={isSidebarCollapsed}
+            />
+          </>
+        )}
+
+        {/* Settings - all roles */}
         <SidebarLink
           href="/settings"
           icon={SlidersHorizontal}

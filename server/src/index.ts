@@ -30,6 +30,8 @@ import invoiceRoutes from "./routes/invoiceRoutes";
 import stockRoutes from "./routes/stockRoutes";
 import reportRoutes from "./routes/reportRoutes";
 import authRoutes from "./routes/authRoutes";
+import quotationRoutes from "./routes/quotationRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 
 const app = express();
 app.use(express.json());
@@ -77,6 +79,8 @@ app.use("/sales-orders", salesOrderRoutes); // http://localhost:5000/sales-order
 app.use("/invoices", invoiceRoutes); // http://localhost:5000/invoices
 app.use("/stock", stockRoutes); // http://localhost:5000/stock
 app.use("/reports", reportRoutes); // http://localhost:5000/reports
+app.use("/quotations", quotationRoutes); // http://localhost:5000/quotations
+app.use("/notifications", notificationRoutes); // http://localhost:5000/notifications
 
 /* ERROR HANDLING MIDDLEWARE */
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

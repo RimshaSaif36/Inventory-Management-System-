@@ -23,12 +23,16 @@ export const registerAccountant = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { email, password, name, storeId } = req.body;
+    const { email, password, name, storeId, role } = req.body;
 
     if (!email || !password || !name) {
       res.status(400).json({ error: "Email, password, and name are required" });
       return;
     }
+
+    // Validate role — only ACCOUNTANT or SALESMAN allowed via this endpoint
+    const validRoles = ["ACCOUNTANT", "SALESMAN"];
+    const userRole = validRoles.includes(role?.toUpperCase()) ? role.toUpperCase() : "ACCOUNTANT";
 
     // Check if user already exists locally
     const existingUser = await prisma.user.findUnique({
@@ -46,7 +50,7 @@ export const registerAccountant = async (
       password,
       email_confirm: true,
       user_metadata: {
-        role: "ACCOUNTANT",
+        role: userRole,
         name,
         storeId,
       },
@@ -63,7 +67,7 @@ export const registerAccountant = async (
         id: authData.user.id, // Use Supabase auth.users id
         name,
         email,
-        role: "ACCOUNTANT",
+        role: userRole,
         storeId: storeId || null,
       },
     });

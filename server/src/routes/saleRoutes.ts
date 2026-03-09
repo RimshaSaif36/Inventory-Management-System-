@@ -1,6 +1,6 @@
 import express from "express";
 import * as saleController from "../controllers/saleController";
-import { authMiddleware, accountantOnly, adminOrAccountant } from "../middleware/auth";
+import { authMiddleware, accountantOnly, adminOrAccountant, adminOnly } from "../middleware/auth";
 
 const router = express.Router();
 
@@ -16,5 +16,8 @@ router.get("/:id", adminOrAccountant, saleController.getSaleById);
 router.post("/", accountantOnly, saleController.createSale);
 router.put("/:id", accountantOnly, saleController.updateSale);
 router.delete("/:id", accountantOnly, saleController.deleteSale);
+
+// Approval - Admin only
+router.put("/:id/approve", adminOnly, saleController.approveSale);
 
 export default router;

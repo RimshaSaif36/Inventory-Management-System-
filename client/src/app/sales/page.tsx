@@ -22,6 +22,10 @@ interface Sale {
   totalAmount: number;
   paymentMethod: string;
   createdAt: string;
+  approved?: boolean;
+  approvedBy?: string;
+  user?: { id: string; name: string };
+  customer?: { id: string; name: string };
 }
 
 export default function POSSalesPage() {
@@ -46,7 +50,7 @@ export default function POSSalesPage() {
     setLoading(true);
     try {
       const response = await apiClient.get("/sales", { params: { storeId } });
-      setSales(response.data);
+      setSales(response.data.data || response.data || []);
     } catch (error) {
       console.error("Error fetching sales:", error);
     } finally {
@@ -110,6 +114,17 @@ export default function POSSalesPage() {
   };
 
   const canCreate = user?.role === "ACCOUNTANT";
+  const isAdmin = user?.role === "ADMIN";
+
+  const handleApprove = async (saleId: string) => {
+    try {
+      await apiClient.put(`/sales/${saleId}/approve`);
+      fetchSales();
+    } catch (error) {
+      console.error("Error approving sale:", error);
+      alert("Error approving sale");
+    }
+  };
 
   return (
     <div className="p-6">
@@ -137,20 +152,50 @@ export default function POSSalesPage() {
             <thead className="bg-gray-200">
               <tr>
                 <th className="border p-2">Sale ID</th>
+                <th className="border p-2">Created By</th>
+                <th className="border p-2">Customer</th>
                 <th className="border p-2">Amount</th>
-                <th className="border p-2">Payment Method</th>
+                <th className="border p-2">Payment</th>
+                <th className="border p-2">Approved</th>
                 <th className="border p-2">Date</th>
+                {isAdmin && <th className="border p-2">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {sales.map((sale) => (
                 <tr key={sale.id}>
                   <td className="border p-2">{sale.id.substring(0, 8)}</td>
+                  <td className="border p-2">{sale.user?.name || "-"}</td>
+                  <td className="border p-2">{sale.customer?.name || "Walk-in"}</td>
                   <td className="border p-2">PKR {sale.totalAmount.toFixed(2)}</td>
                   <td className="border p-2">{sale.paymentMethod}</td>
+                  <td className="border p-2">
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${sale.approved ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                      {sale.approved ? "Approved" : "Pending"}
+                    </span>
+                  </td>
                   <td className="border p-2">{new Date(sale.createdAt).toLocaleDateString()}</td>
+                  {isAdmin && (
+                    <td className="border p-2">
+                      {!sale.approved && (
+                        <button
+                          onClick={() => handleApprove(sale.id)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Approve
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
+              {sales.length === 0 && (
+                <tr>
+                  <td colSpan={isAdmin ? 8 : 7} className="border p-4 text-center text-gray-500">
+                    No sales found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

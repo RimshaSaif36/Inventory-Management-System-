@@ -140,16 +140,27 @@ export const createSale = async (
     }
 
     // Auto-generate invoice
-    await prisma.invoice.create({
+    const invoice = await prisma.invoice.create({
       data: {
         storeId,
         saleId: sale.id,
         totalAmount,
         paymentMethod,
+        invoiceNumber: `POS-${Date.now()}`,
       },
     });
 
-    res.status(201).json(sale);
+    // Create admin notification for new POS invoice
+    await prisma.notification.create({
+      data: {
+        storeId,
+        type: "NEW_POS_INVOICE",
+        message: `New POS invoice created. Total: PKR ${totalAmount.toFixed(2)}`,
+        referenceId: sale.id,
+      },
+    });
+
+    res.status(201).json({ ...sale, invoice });
   } catch (error) {
     console.error("createSale error:", error);
     res.status(500).json({ message: "Error creating sale" });
@@ -176,6 +187,39 @@ export const updateSale = async (
   } catch (error) {
     console.error("updateSale error:", error);
     res.status(500).json({ message: "Error updating sale" });
+  }
+};
+
+export const approveSale = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const requestWithUser = req as Request & { user?: { id: string } };
+    const adminId = requestWithUser.user?.id;
+
+    const sale = await prisma.sale.findUnique({ where: { id } });
+    if (!sale) {
+      res.status(404).json({ message: "Sale not found" });
+      return;
+    }
+
+    if (sale.approved) {
+      res.status(400).json({ message: "Sale is already approved" });
+      return;
+    }
+
+    const updated = await prisma.sale.update({
+      where: { id },
+      data: { approved: true, approvedBy: adminId },
+      include: { items: { include: { product: true } }, customer: true, invoice: true },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("approveSale error:", error);
+    res.status(500).json({ message: "Error approving sale" });
   }
 };
 

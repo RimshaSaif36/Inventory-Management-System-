@@ -4,7 +4,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "ACCOUNTANT";
+  role: "ADMIN" | "ACCOUNTANT" | "SALESMAN";
   storeId?: string;
 }
 
@@ -30,7 +30,7 @@ export const userSlice = createSlice({
       state.currentUser = null;
       state.isAuthenticated = false;
     },
-    updateUserRole: (state, action: PayloadAction<"ADMIN" | "ACCOUNTANT">) => {
+    updateUserRole: (state, action: PayloadAction<"ADMIN" | "ACCOUNTANT" | "SALESMAN">) => {
       if (state.currentUser) {
         state.currentUser.role = action.payload;
       }

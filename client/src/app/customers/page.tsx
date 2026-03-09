@@ -9,6 +9,7 @@ interface Customer {
   name: string;
   phone?: string;
   email?: string;
+  customerType: string;
   createdAt: string;
 }
 
@@ -17,8 +18,9 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", phone: "", email: "" });
+  const [formData, setFormData] = useState({ name: "", phone: "", email: "", customerType: "POS" });
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("ALL");
 
   const user = useAppSelector((state) => state.user.currentUser);
 
@@ -48,7 +50,7 @@ export default function CustomersPage() {
       } else {
         await apiClient.post("/customers", formData);
       }
-      setFormData({ name: "", phone: "", email: "" });
+      setFormData({ name: "", phone: "", email: "", customerType: "POS" });
       setEditingId(null);
       setShowModal(false);
       fetchCustomers();
@@ -58,7 +60,12 @@ export default function CustomersPage() {
   };
 
   const handleEdit = (customer: Customer) => {
-    setFormData({ name: customer.name, phone: customer.phone || "", email: customer.email || "" });
+    setFormData({
+      name: customer.name,
+      phone: customer.phone || "",
+      email: customer.email || "",
+      customerType: customer.customerType || "POS",
+    });
     setEditingId(customer.id);
     setShowModal(true);
   };
@@ -74,7 +81,12 @@ export default function CustomersPage() {
     }
   };
 
-  const canEdit = user?.role === "ACCOUNTANT";
+  const canEdit = user?.role === "ADMIN" || user?.role === "ACCOUNTANT";
+
+  const filteredCustomers =
+    typeFilter === "ALL"
+      ? customers
+      : customers.filter((c) => c.customerType === typeFilter);
 
   return (
     <div className="p-6">
@@ -83,7 +95,7 @@ export default function CustomersPage() {
         {canEdit && (
           <button
             onClick={() => {
-              setFormData({ name: "", phone: "", email: "" });
+              setFormData({ name: "", phone: "", email: "", customerType: "POS" });
               setEditingId(null);
               setShowModal(true);
             }}
@@ -94,14 +106,23 @@ export default function CustomersPage() {
         )}
       </div>
 
-      <div className="mb-4">
+      <div className="flex gap-4 mb-4">
         <input
           type="text"
           placeholder="Search customers..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg"
+          className="flex-1 px-4 py-2 border rounded-lg"
         />
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="px-4 py-2 border rounded-lg"
+        >
+          <option value="ALL">All Types</option>
+          <option value="POS">POS Customer</option>
+          <option value="SALES_ORDER">Sales Order Customer</option>
+        </select>
       </div>
 
       {loading ? (
@@ -114,35 +135,57 @@ export default function CustomersPage() {
                 <th className="border p-2">Name</th>
                 <th className="border p-2">Phone</th>
                 <th className="border p-2">Email</th>
+                <th className="border p-2">Type</th>
                 <th className="border p-2">Created Date</th>
                 {canEdit && <th className="border p-2">Actions</th>}
               </tr>
             </thead>
             <tbody>
-              {customers.map((customer) => (
-                <tr key={customer.id}>
-                  <td className="border p-2">{customer.name}</td>
-                  <td className="border p-2">{customer.phone || "-"}</td>
-                  <td className="border p-2">{customer.email || "-"}</td>
-                  <td className="border p-2">{new Date(customer.createdAt).toLocaleDateString()}</td>
-                  {canEdit && (
-                    <td className="border p-2">
-                      <button
-                        onClick={() => handleEdit(customer)}
-                        className="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(customer.id)}
-                        className="bg-red-600 text-white px-2 py-1 rounded"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  )}
+              {filteredCustomers.length === 0 ? (
+                <tr>
+                  <td colSpan={canEdit ? 6 : 5} className="border p-4 text-center text-gray-500">
+                    No customers found.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                filteredCustomers.map((customer) => (
+                  <tr key={customer.id}>
+                    <td className="border p-2">{customer.name}</td>
+                    <td className="border p-2">{customer.phone || "-"}</td>
+                    <td className="border p-2">{customer.email || "-"}</td>
+                    <td className="border p-2">
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          customer.customerType === "POS"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-purple-100 text-purple-700"
+                        }`}
+                      >
+                        {customer.customerType === "POS" ? "POS" : "Sales Order"}
+                      </span>
+                    </td>
+                    <td className="border p-2">
+                      {new Date(customer.createdAt).toLocaleDateString()}
+                    </td>
+                    {canEdit && (
+                      <td className="border p-2">
+                        <button
+                          onClick={() => handleEdit(customer)}
+                          className="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(customer.id)}
+                          className="bg-red-600 text-white px-2 py-1 rounded"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -150,7 +193,7 @@ export default function CustomersPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-96">
             <h2 className="text-xl font-bold mb-4">{editingId ? "Edit" : "Add"} Customer</h2>
             <form onSubmit={handleSubmit}>
@@ -181,6 +224,17 @@ export default function CustomersPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full border px-3 py-2 rounded"
                 />
+              </div>
+              <div className="mb-4">
+                <label className="block mb-2">Customer Type</label>
+                <select
+                  value={formData.customerType}
+                  onChange={(e) => setFormData({ ...formData, customerType: e.target.value })}
+                  className="w-full border px-3 py-2 rounded"
+                >
+                  <option value="POS">POS Customer</option>
+                  <option value="SALES_ORDER">Sales Order Customer</option>
+                </select>
               </div>
               <div className="flex gap-2">
                 <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded flex-1">

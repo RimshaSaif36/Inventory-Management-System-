@@ -14,12 +14,13 @@ model User {
   id       String  @id
   name     String
   email    String  @unique
-  role     String
+  role     String  // ADMIN | ACCOUNTANT | SALESMAN
   storeId  String?
 
   purchases   Purchase[]
   sales       Sale[]
   salesOrders SalesOrder[]
+  quotations  Quotation[]
 
   createdAt DateTime @default(now())
 }
@@ -38,6 +39,9 @@ model Store {
   purchases   Purchase[]
   employees   Employee[]
   invoices    Invoice[]
+  quotations  Quotation[]
+  expenses    Expense[]
+  notifications Notification[]
   createdAt   DateTime     @default(now())
 }
 
@@ -88,6 +92,7 @@ model Product {
   saleItems     SaleItem[]
   orderItems    SalesOrderItem[]
   purchaseItems PurchaseItem[]
+  quotationItems QuotationItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -177,13 +182,15 @@ model PurchaseItem {
 //////////////////////////////////////////////////////
 
 model Customer {
-  id    String  @id @default(uuid())
-  name  String
-  phone String?
-  email String?
+  id           String  @id @default(uuid())
+  name         String
+  phone        String?
+  email        String?
+  customerType String  @default("POS") // POS | SALES_ORDER
 
-  orders SalesOrder[]
-  sales  Sale[]
+  orders     SalesOrder[]
+  sales      Sale[]
+  quotations Quotation[]
 
   createdAt DateTime @default(now())
 }
@@ -214,6 +221,8 @@ model Sale {
   customerId    String?
   totalAmount   Float
   paymentMethod String
+  approved      Boolean  @default(false)
+  approvedBy    String?
   createdAt     DateTime @default(now())
 
   store    Store     @relation(fields: [storeId], references: [id])
@@ -245,13 +254,14 @@ model SaleItem {
 //////////////////////////////////////////////////////
 
 model SalesOrder {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   storeId          String
   userId           String
   customerId       String
-  orderDate        DateTime @default(now())
+  quotationId      String?
+  orderDate        DateTime  @default(now())
   expectedDelivery DateTime?
-  status           String
+  status           String    @default("PENDING") // PENDING | RESERVED | CONFIRMED | DELIVERED | COMPLETED | INVOICED
   totalAmount      Float
 
   store    Store    @relation(fields: [storeId], references: [id])
@@ -280,14 +290,85 @@ model SalesOrderItem {
 
 model Invoice {
   id            String   @id @default(uuid())
+  invoiceNumber String?
   storeId       String
   saleId        String?  @unique
   salesOrderId  String?  @unique
   totalAmount   Float
   paymentMethod String?
+  status        String   @default("UNPAID") // UNPAID | PAID | PARTIAL
   createdAt     DateTime @default(now())
 
   store      Store       @relation(fields: [storeId], references: [id])
   sale       Sale?       @relation(fields: [saleId], references: [id])
   salesOrder SalesOrder? @relation(fields: [salesOrderId], references: [id])
 }
+
+//////////////////////////////////////////////////////
+// QUOTATIONS
+//////////////////////////////////////////////////////
+
+model Quotation {
+  id          String    @id @default(uuid())
+  storeId     String
+  userId      String
+  customerId  String
+  status      String    @default("DRAFT") // DRAFT | SENT | ACCEPTED | REJECTED | CONVERTED
+  validUntil  DateTime?
+  totalAmount Float
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  store    Store    @relation(fields: [storeId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  items QuotationItem[]
+}
+
+model QuotationItem {
+  id          String @id @default(uuid())
+  quotationId String
+  productId   String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+}
+
+//////////////////////////////////////////////////////
+// EXPENSES
+//////////////////////////////////////////////////////
+
+model Expense {
+  id          String   @id @default(uuid())
+  storeId     String
+  category    String
+  description String?
+  amount      Float
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id])
+}
+
+//////////////////////////////////////////////////////
+// NOTIFICATIONS
+//////////////////////////////////////////////////////
+
+model Notification {
+  id        String   @id @default(uuid())
+  storeId   String
+  type      String   // NEW_POS_INVOICE | NEW_ORDER | SALE_ACTIVITY | SYSTEM_ALERT
+  message   String
+  read      Boolean  @default(false)
+  referenceId String?
+  createdAt DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id])
+}
+

@@ -100,3 +100,43 @@ export const adminOrAccountant = (
   }
   next();
 };
+
+export const salesmanOnly = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  if (!req.user || req.user?.role !== "SALESMAN") {
+    res.status(403).json({ message: "Salesman access required" });
+    return;
+  }
+  next();
+};
+
+/** Allows ADMIN, ACCOUNTANT, and SALESMAN */
+export const anyRole = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  const allowed = ["ADMIN", "ACCOUNTANT", "SALESMAN"];
+  if (!req.user || !allowed.includes(req.user?.role)) {
+    res.status(403).json({ message: "Authentication required" });
+    return;
+  }
+  next();
+};
+
+/** Allows ACCOUNTANT and SALESMAN (not ADMIN-only operations) */
+export const accountantOrSalesman = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  const allowed = ["ACCOUNTANT", "SALESMAN"];
+  if (!req.user || !allowed.includes(req.user?.role)) {
+    res.status(403).json({ message: "Access restricted to accountant or salesman" });
+    return;
+  }
+  next();
+};

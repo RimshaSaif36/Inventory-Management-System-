@@ -19,10 +19,14 @@ const Navbar = () => {
     (state) => state.global.isSidebarCollapsed
   );
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
+  const notificationsEnabled = useAppSelector(
+    (state) => state.global.notificationsEnabled
+  );
   const currentUser = useAppSelector((state) => state.user.currentUser);
   const [unreadCount, setUnreadCount] = useState(0);
   const canViewNotifications =
-    currentUser?.role === "ADMIN" || currentUser?.role === "ACCOUNTANT";
+    (currentUser?.role === "ADMIN" || currentUser?.role === "ACCOUNTANT") &&
+    notificationsEnabled;
   const storeId = currentUser?.storeId;
   const roleLabel = currentUser?.role
     ? `${currentUser.role[0]}${currentUser.role.slice(1).toLowerCase()}`

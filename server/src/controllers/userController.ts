@@ -63,6 +63,42 @@ export const getCurrentUser = async (req: AuthenticatedRequest, res: Response): 
   }
 };
 
+export const updateCurrentUser = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: "User not authenticated" });
+      return;
+    }
+
+    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+
+    if (!name) {
+      res.status(400).json({ message: "Name is required" });
+      return;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { name },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        storeId: true,
+      },
+    });
+
+    res.json({ data: updatedUser });
+  } catch (error) {
+    console.error("Error updating current user:", error);
+    res.status(500).json({ message: "Error updating user" });
+  }
+};
+
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, role, password } = req.body;

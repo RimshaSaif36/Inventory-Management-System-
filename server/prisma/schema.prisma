@@ -192,6 +192,7 @@ model Customer {
   name         String
   phone        String?
   email        String?
+  address      String?
   customerType String  @default("POS") // POS | SALES_ORDER
 
   orders     SalesOrder[]

@@ -24,6 +24,7 @@ interface Customer {
     name: string;
     phone?: string;
     email?: string;
+    address?: string;
 }
 
 interface Quotation {
@@ -246,33 +247,67 @@ export default function QuotationsPage() {
         printWindow.document.write(`
       <html>
       <head><title>Quotation ${q.id.substring(0, 8)}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 40px; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f5f5f5; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .total { text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px; }
-      </style>
+            <style>
+                :root { --brand: #0f5c82; --muted: #6b7280; --border: #e5e7eb; --bg: #f7f9fb; }
+                body { font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif; color: #111827; padding: 32px; }
+                .page { max-width: 900px; margin: 0 auto; }
+                .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 2px solid var(--border); margin-bottom: 18px; }
+                .company { display: flex; align-items: center; gap: 14px; }
+                .logo { width: 72px; height: 72px; object-fit: contain; }
+                .company-name { font-size: 20px; font-weight: 700; letter-spacing: 0.2px; }
+                .company-phone { font-size: 12px; color: var(--muted); margin-top: 2px; }
+                .quote-meta { text-align: right; }
+                .quote-title { font-size: 22px; font-weight: 700; color: var(--brand); letter-spacing: 1px; }
+                .quote-ref { font-size: 12px; color: var(--muted); margin-top: 2px; }
+                .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; background: #eef2f7; color: #334155; }
+                .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0 18px; }
+                .section { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+                .section h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+                .row { display: flex; gap: 8px; font-size: 13px; margin: 2px 0; }
+                .label { min-width: 92px; color: #374151; font-weight: 600; }
+                .value { color: #111827; }
+                table { width: 100%; border-collapse: collapse; margin: 12px 0 0; }
+                th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; font-size: 13px; }
+                th { background: #f1f5f9; text-transform: uppercase; font-size: 11px; letter-spacing: 0.8px; color: #334155; }
+                tbody tr:nth-child(even) { background: #fafbfc; }
+                .notes { margin-top: 10px; padding: 10px 12px; border-left: 3px solid var(--brand); background: #f8fafc; font-size: 13px; }
+                .total { text-align: right; font-size: 16px; font-weight: 700; margin-top: 12px; }
+                .footer { margin-top: 16px; font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+            </style>
       </head>
       <body>
-        <div class="header">
-          <h1>QUOTATION</h1>
-          <p>Ref: ${q.id.substring(0, 8)}</p>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
-          <div>
-            <strong>Customer:</strong> ${q.customer.name}<br/>
-            ${q.customer.phone ? `<strong>Phone:</strong> ${q.customer.phone}<br/>` : ""}
-            ${q.customer.email ? `<strong>Email:</strong> ${q.customer.email}<br/>` : ""}
-          </div>
-          <div>
-            <strong>Date:</strong> ${new Date(q.createdAt).toLocaleDateString()}<br/>
-            ${q.validUntil ? `<strong>Valid Until:</strong> ${new Date(q.validUntil).toLocaleDateString()}<br/>` : ""}
-            <strong>Status:</strong> ${q.status}
-          </div>
-        </div>
-        ${q.notes ? `<p><strong>Notes:</strong> ${q.notes}</p>` : ""}
+                <div class="page">
+                    <div class="header">
+                        <div class="company">
+                            <img class="logo" src="/logo.jpg" alt="Khtab Engineering and Services" />
+                            <div>
+                                <div class="company-name">Khtab Engineering and Services</div>
+                                <div class="company-phone">Phone: 03070600250</div>
+                            </div>
+                        </div>
+                        <div class="quote-meta">
+                            <div class="quote-title">QUOTATION</div>
+                            <div class="quote-ref">Ref: ${q.id.substring(0, 8)}</div>
+                        </div>
+                    </div>
+
+                    <div class="section-grid">
+                        <div class="section">
+                            <h3>Customer</h3>
+                            <div class="row"><div class="label">Name</div><div class="value">${q.customer.name}</div></div>
+                            ${q.customer.phone ? `<div class="row"><div class="label">Phone</div><div class="value">${q.customer.phone}</div></div>` : ""}
+                            ${q.customer.email ? `<div class="row"><div class="label">Email</div><div class="value">${q.customer.email}</div></div>` : ""}
+                            ${q.customer.address ? `<div class="row"><div class="label">Address</div><div class="value">${q.customer.address}</div></div>` : ""}
+                        </div>
+                        <div class="section">
+                            <h3>Quotation</h3>
+                            <div class="row"><div class="label">Date</div><div class="value">${new Date(q.createdAt).toLocaleDateString()}</div></div>
+                            ${q.validUntil ? `<div class="row"><div class="label">Valid Until</div><div class="value">${new Date(q.validUntil).toLocaleDateString()}</div></div>` : ""}
+                            <div class="row"><div class="label">Status</div><div class="value"><span class="badge">${q.status}</span></div></div>
+                        </div>
+                    </div>
+
+                    ${q.notes ? `<div class="notes"><strong>Notes:</strong> ${q.notes}</div>` : ""}
         <table>
           <thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
           <tbody>
@@ -283,7 +318,12 @@ export default function QuotationsPage() {
             `).join("")}
           </tbody>
         </table>
-        <div class="total">Total: PKR ${q.totalAmount.toFixed(2)}</div>
+                    <div class="total">Total: PKR ${q.totalAmount.toFixed(2)}</div>
+                    <div class="footer">
+                        <span>Generated by Khtab Engineering and Services</span>
+                        <span>Phone: 03070600250</span>
+                    </div>
+                </div>
         <script>window.print();</script>
       </body></html>
     `);
@@ -568,6 +608,9 @@ export default function QuotationsPage() {
                             <div><strong>Date:</strong> {new Date(selectedQuotation.createdAt).toLocaleDateString()}</div>
                             {selectedQuotation.validUntil && (
                                 <div><strong>Valid Until:</strong> {new Date(selectedQuotation.validUntil).toLocaleDateString()}</div>
+                            )}
+                            {selectedQuotation.customer.address && (
+                                <div><strong>Address:</strong> {selectedQuotation.customer.address}</div>
                             )}
                             {selectedQuotation.notes && (
                                 <div className="col-span-2"><strong>Notes:</strong> {selectedQuotation.notes}</div>

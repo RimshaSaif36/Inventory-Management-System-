@@ -9,6 +9,7 @@ interface Customer {
   name: string;
   phone?: string;
   email?: string;
+  address?: string;
   customerType: string;
   createdAt: string;
 }
@@ -18,7 +19,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: "", phone: "", email: "", customerType: "POS" });
+  const [formData, setFormData] = useState({ name: "", phone: "", email: "", address: "", customerType: "POS" });
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
 
@@ -65,6 +66,7 @@ export default function CustomersPage() {
       name: customer.name,
       phone: customer.phone || "",
       email: customer.email || "",
+      address: customer.address || "",
       customerType: customer.customerType || "POS",
     });
     setEditingId(customer.id);
@@ -96,7 +98,7 @@ export default function CustomersPage() {
         {canEdit && (
           <button
             onClick={() => {
-              setFormData({ name: "", phone: "", email: "", customerType: "POS" });
+              setFormData({ name: "", phone: "", email: "", address: "", customerType: "POS" });
               setEditingId(null);
               setShowModal(true);
             }}
@@ -136,6 +138,7 @@ export default function CustomersPage() {
                 <th className="border p-2">Name</th>
                 <th className="border p-2">Phone</th>
                 <th className="border p-2">Email</th>
+                <th className="border p-2">Address</th>
                 <th className="border p-2">Type</th>
                 <th className="border p-2">Created Date</th>
                 {canEdit && <th className="border p-2">Actions</th>}
@@ -144,7 +147,7 @@ export default function CustomersPage() {
             <tbody>
               {filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={canEdit ? 6 : 5} className="border p-4 text-center text-gray-500">
+                  <td colSpan={canEdit ? 7 : 6} className="border p-4 text-center text-gray-500">
                     No customers found.
                   </td>
                 </tr>
@@ -154,6 +157,7 @@ export default function CustomersPage() {
                     <td className="border p-2">{customer.name}</td>
                     <td className="border p-2">{customer.phone || "-"}</td>
                     <td className="border p-2">{customer.email || "-"}</td>
+                    <td className="border p-2">{customer.address || "-"}</td>
                     <td className="border p-2">
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${customer.customerType === "POS"
@@ -222,6 +226,15 @@ export default function CustomersPage() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full border px-3 py-2 rounded"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block mb-2">Address</label>
+                <input
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="w-full border px-3 py-2 rounded"
                 />
               </div>

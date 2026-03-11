@@ -1,15 +1,26 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { AuthenticatedRequest } from "../middleware/auth";
 
 export const getExpenses = async (req: Request, res: Response): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    let storeId = req.query.storeId?.toString();
     const category = req.query.category?.toString();
     const startDate = req.query.startDate?.toString();
     const endDate = req.query.endDate?.toString();
     const page = parseInt(req.query.page?.toString() || "1");
     const limit = parseInt(req.query.limit?.toString() || "50");
     const skip = (page - 1) * limit;
+
+    if (!storeId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        storeId = stores[0].id;
+      } else if (stores.length > 1) {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
 
     const where: any = {
       ...(storeId && { storeId }),
@@ -38,7 +49,17 @@ export const getExpenses = async (req: Request, res: Response): Promise<void> =>
 
 export const getExpensesByCategory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    let storeId = req.query.storeId?.toString();
+
+    if (!storeId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        storeId = stores[0].id;
+      } else if (stores.length > 1) {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
 
     const grouped = await prisma.expense.groupBy({
       by: ["category"],
@@ -62,16 +83,39 @@ export const getExpensesByCategory = async (req: Request, res: Response): Promis
 
 export const createExpense = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { storeId, category, description, amount, date } = req.body;
+    const requestUser = req as AuthenticatedRequest;
+    const { storeId: storeIdBody, category, description, amount, date } = req.body;
+    let resolvedStoreId = storeIdBody || requestUser.user?.storeId;
 
-    if (!storeId || !category || !amount) {
+    if (resolvedStoreId) {
+      const store = await prisma.store.findUnique({ where: { id: resolvedStoreId } });
+      if (!store) {
+        res.status(400).json({ message: "Store not found" });
+        return;
+      }
+    } else {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        resolvedStoreId = stores[0].id;
+      } else if (stores.length === 0) {
+        const defaultStore = await prisma.store.create({
+          data: { name: "Default Store", location: "Main Warehouse" },
+        });
+        resolvedStoreId = defaultStore.id;
+      } else {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
+
+    if (!resolvedStoreId || !category || !amount) {
       res.status(400).json({ message: "storeId, category, and amount are required" });
       return;
     }
 
     const expense = await prisma.expense.create({
       data: {
-        storeId,
+        storeId: resolvedStoreId,
         category,
         description: description || null,
         amount: parseFloat(amount),

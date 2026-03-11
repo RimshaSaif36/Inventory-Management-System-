@@ -74,7 +74,7 @@ export const createCustomer = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { name, phone, email } = req.body;
+    const { name, phone, email, address } = req.body;
 
     if (!name) {
       res.status(400).json({ message: "Customer name is required" });
@@ -86,6 +86,7 @@ export const createCustomer = async (
         name,
         phone: phone || null,
         email: email || null,
+        address: address || null,
       },
     });
 
@@ -102,7 +103,7 @@ export const updateCustomer = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, phone, email } = req.body;
+    const { name, phone, email, address } = req.body;
 
     const customer = await prisma.customer.update({
       where: { id },
@@ -110,6 +111,7 @@ export const updateCustomer = async (
         ...(name && { name }),
         ...(phone !== undefined && { phone }),
         ...(email !== undefined && { email }),
+        ...(address !== undefined && { address }),
       },
     });
 

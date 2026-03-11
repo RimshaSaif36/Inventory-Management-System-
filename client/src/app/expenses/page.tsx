@@ -56,7 +56,9 @@ const Expenses = () => {
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get("/expenses", { params: { storeId } });
+      const params: Record<string, string> = {};
+      if (storeId) params.storeId = storeId;
+      const response = await apiClient.get("/expenses", { params });
       setExpenses(response.data.data || []);
     } catch (error) {
       console.error("Error fetching expenses:", error);
@@ -67,7 +69,9 @@ const Expenses = () => {
 
   const fetchCategorySummary = useCallback(async () => {
     try {
-      const response = await apiClient.get("/expenses/by-category", { params: { storeId } });
+      const params: Record<string, string> = {};
+      if (storeId) params.storeId = storeId;
+      const response = await apiClient.get("/expenses/by-category", { params });
       setCategorySummary(response.data || []);
     } catch (error) {
       console.error("Error fetching expense summary:", error);
@@ -75,10 +79,8 @@ const Expenses = () => {
   }, [storeId]);
 
   useEffect(() => {
-    if (storeId) {
-      fetchExpenses();
-      fetchCategorySummary();
-    }
+    fetchExpenses();
+    fetchCategorySummary();
   }, [storeId, fetchExpenses, fetchCategorySummary]);
 
   const resetForm = () => {
@@ -96,7 +98,7 @@ const Expenses = () => {
     }
     try {
       const payload = {
-        storeId,
+        storeId: storeId || undefined,
         category: formCategory,
         description: formDescription || undefined,
         amount: formAmount,
@@ -111,9 +113,9 @@ const Expenses = () => {
       resetForm();
       fetchExpenses();
       fetchCategorySummary();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving expense:", error);
-      alert("Error saving expense");
+      alert(error?.response?.data?.message || "Error saving expense");
     }
   };
 

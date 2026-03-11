@@ -69,7 +69,17 @@ const Inventory = () => {
         <div className="flex items-center justify-center">
           <div className="w-10 h-10 bg-gradient-to-br from-slate-200 to-slate-300 rounded-lg flex items-center justify-center overflow-hidden shadow-sm">
             {params.row.imageUrl ? (
-              <img src={params.row.imageUrl} alt={params.row.name} className="w-full h-full object-cover" />
+              <img
+                src={params.row.imageUrl}
+                alt={params.row.name}
+                className="w-full h-full object-cover"
+                onError={(event) => {
+                  const target = event.currentTarget as HTMLImageElement;
+                  if (!target.src.endsWith("/logo.jpg")) {
+                    target.src = "/logo.jpg";
+                  }
+                }}
+              />
             ) : (
               <span className="text-sm">📦</span>
             )}
@@ -789,7 +799,17 @@ const Inventory = () => {
             <div className="space-y-4">
               {selectedProduct.imageUrl && (
                 <div className="w-full h-40 bg-gray-200 rounded overflow-hidden">
-                  <img src={selectedProduct.imageUrl} alt={selectedProduct.name} className="w-full h-full object-cover" />
+                  <img
+                    src={selectedProduct.imageUrl}
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-cover"
+                    onError={(event) => {
+                      const target = event.currentTarget as HTMLImageElement;
+                      if (!target.src.endsWith("/logo.jpg")) {
+                        target.src = "/logo.jpg";
+                      }
+                    }}
+                  />
                 </div>
               )}
 

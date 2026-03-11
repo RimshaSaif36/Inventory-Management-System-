@@ -5,14 +5,34 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
   try {
     const storeId = req.query.storeId?.toString();
     const unreadOnly = req.query.unreadOnly === "true";
+    const summaryOnly = req.query.summaryOnly === "true";
     const page = parseInt(req.query.page?.toString() || "1");
     const limit = parseInt(req.query.limit?.toString() || "20");
     const skip = (page - 1) * limit;
 
+    let resolvedStoreId = storeId;
+    if (!resolvedStoreId) {
+      const stores = await prisma.store.findMany({ select: { id: true }, take: 2 });
+      if (stores.length === 1) {
+        resolvedStoreId = stores[0].id;
+      }
+    }
+
     const where: any = {
-      ...(storeId && { storeId }),
+      ...(resolvedStoreId && { storeId: resolvedStoreId }),
       ...(unreadOnly && { read: false }),
     };
+
+    const unreadWhere: any = {
+      ...(resolvedStoreId && { storeId: resolvedStoreId }),
+      read: false,
+    };
+
+    if (summaryOnly) {
+      const unreadCount = await prisma.notification.count({ where: unreadWhere });
+      res.json({ data: [], total: 0, page, limit, unreadCount });
+      return;
+    }
 
     const [notifications, total, unreadCount] = await Promise.all([
       prisma.notification.findMany({
@@ -22,7 +42,7 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
         take: limit,
       }),
       prisma.notification.count({ where }),
-      prisma.notification.count({ where: { ...(storeId && { storeId }), read: false } }),
+      prisma.notification.count({ where: unreadWhere }),
     ]);
 
     res.json({ data: notifications, total, page, limit, unreadCount });

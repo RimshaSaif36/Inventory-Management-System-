@@ -41,13 +41,14 @@ const Navbar = () => {
       return;
     }
     try {
-      const params: Record<string, string> = { unreadOnly: "true", limit: "1" };
+      const params: Record<string, string> = { unreadOnly: "true", limit: "1", summaryOnly: "true" };
       if (storeId) params.storeId = storeId;
       const response = await apiClient.get("/notifications", { params });
       const count = response.data?.unreadCount;
       setUnreadCount(Number.isFinite(count) ? count : 0);
     } catch (error) {
-      console.error("Failed to fetch notification count:", error);
+      setUnreadCount(0);
+      console.warn("Notifications unavailable, skipping count fetch.");
     }
   }, [canViewNotifications, storeId]);
 

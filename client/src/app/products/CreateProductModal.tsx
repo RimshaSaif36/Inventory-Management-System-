@@ -1,12 +1,13 @@
 "use client";
 
-import { useGetSeriesQuery, useUpdateProductMutation } from "@/state/api";
+import { useGetBrandsQuery, useGetCategoriesQuery, useGetSeriesQuery, useUpdateProductMutation } from "@/state/api";
 import React, { ChangeEvent, FormEvent, useState, useEffect } from "react";
 
 type ProductFormData = {
   name: string;
   purchasePrice: number;
   sellingPrice: number;
+  brandId: string;
   seriesId: string;
   imageFile?: File | null;
 };
@@ -28,52 +29,109 @@ const CreateProductModal = ({
     name: "",
     purchasePrice: 0,
     sellingPrice: 0,
+    brandId: "",
     seriesId: "",
     imageFile: null,
   });
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [error, setError] = useState<string>("");
 
-  const { data: seriesResponse } = useGetSeriesQuery(undefined);
+  const { data: brandsResponse } = useGetBrandsQuery(undefined);
+  const brands = brandsResponse || [];
+
+  const shouldFetchCategories = Boolean(formData.brandId);
+  const { data: categoriesResponse } = useGetCategoriesQuery(
+    shouldFetchCategories
+      ? { brandId: formData.brandId, page: 1, pageSize: 200 }
+      : undefined,
+    { skip: !shouldFetchCategories }
+  );
+  const categories = categoriesResponse?.data || [];
+
+  const shouldFetchSeries = Boolean(selectedCategoryId);
+  const { data: seriesResponse } = useGetSeriesQuery(
+    shouldFetchSeries
+      ? { categoryId: selectedCategoryId, page: 1, pageSize: 200 }
+      : undefined,
+    { skip: !shouldFetchSeries }
+  );
   const series = seriesResponse?.data || [];
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
 
   useEffect(() => {
     if (product) {
+      const resolvedBrandId = product.brandId || product.series?.category?.brandId || "";
+      const resolvedCategoryId = product.series?.category?.id || "";
       setFormData({
         name: product.name || "",
         purchasePrice: product.purchasePrice || 0,
         sellingPrice: product.sellingPrice || 0,
+        brandId: resolvedBrandId,
         seriesId: product.seriesId || "",
+        imageFile: null,
       });
+      setSelectedCategoryId(resolvedCategoryId);
     } else {
       setFormData({
         name: "",
         purchasePrice: 0,
         sellingPrice: 0,
+        brandId: "",
         seriesId: "",
+        imageFile: null,
       });
+      setSelectedCategoryId("");
     }
   }, [product]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]:
         name === "purchasePrice" || name === "sellingPrice"
           ? parseFloat(value) || 0
           : value,
-    });
+    }));
+  };
+
+  const handleBrandChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const nextBrandId = e.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      brandId: nextBrandId,
+      seriesId: "",
+    }));
+    setSelectedCategoryId("");
+  };
+
+  const handleCategoryChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const nextCategoryId = e.target.value;
+    setSelectedCategoryId(nextCategoryId);
+    setFormData((prev) => ({
+      ...prev,
+      seriesId: "",
+    }));
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
-    setFormData({ ...formData, imageFile: file });
+    setFormData((prev) => ({ ...prev, imageFile: file }));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    if (!formData.brandId) {
+      setError("Please select a brand");
+      return;
+    }
+
+    if (!selectedCategoryId) {
+      setError("Please select a category");
+      return;
+    }
 
     if (!formData.seriesId) {
       setError("Please select a series");
@@ -87,6 +145,7 @@ const CreateProductModal = ({
           name: formData.name,
           purchasePrice: formData.purchasePrice,
           sellingPrice: formData.sellingPrice,
+          brandId: formData.brandId,
           seriesId: formData.seriesId,
         };
 
@@ -185,6 +244,47 @@ const CreateProductModal = ({
             required
           />
 
+          {/* BRAND SELECTION */}
+          <label htmlFor="brandId" className={labelCssStyles}>
+            Brand
+          </label>
+          <select
+            name="brandId"
+            onChange={handleBrandChange}
+            value={formData.brandId}
+            className={inputCssStyles}
+            required
+          >
+            <option value="">Select a brand</option>
+            {brands?.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+
+          {/* CATEGORY SELECTION */}
+          <label htmlFor="categoryId" className={labelCssStyles}>
+            Category
+          </label>
+          <select
+            name="categoryId"
+            onChange={handleCategoryChange}
+            value={selectedCategoryId}
+            className={inputCssStyles}
+            disabled={!formData.brandId}
+            required
+          >
+            <option value="">
+              {formData.brandId ? "Select a category" : "Select a brand first"}
+            </option>
+            {categories?.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+
           {/* SERIES SELECTION */}
           <label htmlFor="seriesId" className={labelCssStyles}>
             Series
@@ -194,12 +294,15 @@ const CreateProductModal = ({
             onChange={handleChange}
             value={formData.seriesId}
             className={inputCssStyles}
+            disabled={!selectedCategoryId}
             required
           >
-            <option value="">Select a series</option>
+            <option value="">
+              {selectedCategoryId ? "Select a series" : "Select a category first"}
+            </option>
             {series?.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.category?.brand?.name} → {item.category?.name} → {item.name}
+                {item.name}
               </option>
             ))}
           </select>

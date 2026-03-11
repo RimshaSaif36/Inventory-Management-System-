@@ -14,6 +14,7 @@ type ProductFormData = {
   name: string;
   purchasePrice: number;
   sellingPrice: number;
+  brandId?: string;
   seriesId: string;
 };
 
@@ -171,6 +172,12 @@ const Products = () => {
                   width={150}
                   height={150}
                   className="mb-3 rounded-2xl w-36 h-36"
+                  onError={(event) => {
+                    const target = event.currentTarget as HTMLImageElement;
+                    if (!target.src.endsWith("/logo.jpg")) {
+                      target.src = "/logo.jpg";
+                    }
+                  }}
                   unoptimized
                 />
                 <h3 className="text-lg text-gray-900 font-semibold">

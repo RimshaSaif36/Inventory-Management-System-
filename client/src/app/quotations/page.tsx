@@ -378,82 +378,99 @@ export default function QuotationsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {quotations.map((q) => (
-                                <tr key={q.id}>
-                                    <td className="border p-2">{q.id.substring(0, 8)}</td>
-                                    <td className="border p-2">{q.customer.name}</td>
-                                    <td className="border p-2">PKR {q.totalAmount.toFixed(2)}</td>
-                                    <td className="border p-2">
-                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[q.status] || ""}`}>
-                                            {q.status}
-                                        </span>
-                                    </td>
-                                    <td className="border p-2">{new Date(q.createdAt).toLocaleDateString()}</td>
-                                    <td className="border p-2">{q.user.name}</td>
-                                    <td className="border p-2 space-x-1">
-                                        <button
-                                            onClick={() => setSelectedQuotation(q)}
-                                            className="bg-blue-600 text-white px-2 py-1 rounded text-xs"
-                                        >
-                                            View
-                                        </button>
-                                        <button
-                                            onClick={() => handleDownloadPDF(q)}
-                                            className="bg-green-600 text-white px-2 py-1 rounded text-xs"
-                                        >
-                                            PDF
-                                        </button>
-                                        {isAccountant && q.status === "DRAFT" && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleEdit(q)}
-                                                    className="bg-yellow-500 text-white px-2 py-1 rounded text-xs"
-                                                >
-                                                    Edit
-                                                </button>
+                            {quotations.map((q) => {
+                                const isConverted = q.status === "CONVERTED";
+                                const canManage = isAccountant || isAdmin;
+
+                                return (
+                                    <tr key={q.id}>
+                                        <td className="border p-2">{q.id.substring(0, 8)}</td>
+                                        <td className="border p-2">{q.customer.name}</td>
+                                        <td className="border p-2">PKR {q.totalAmount.toFixed(2)}</td>
+                                        <td className="border p-2">
+                                            <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[q.status] || ""}`}>
+                                                {q.status}
+                                            </span>
+                                        </td>
+                                        <td className="border p-2">{new Date(q.createdAt).toLocaleDateString()}</td>
+                                        <td className="border p-2">{q.user.name}</td>
+                                        <td className="border p-2 space-x-1">
+                                            <button
+                                                onClick={() => setSelectedQuotation(q)}
+                                                className="bg-blue-600 text-white px-2 py-1 rounded text-xs"
+                                            >
+                                                View
+                                            </button>
+                                            <button
+                                                onClick={() => handleDownloadPDF(q)}
+                                                className="bg-green-600 text-white px-2 py-1 rounded text-xs"
+                                            >
+                                                PDF
+                                            </button>
+                                            {canManage && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleEdit(q)}
+                                                        disabled={isConverted}
+                                                        title={isConverted ? "Converted quotations cannot be edited" : "Edit quotation"}
+                                                        className={`px-2 py-1 rounded text-xs ${
+                                                            isConverted
+                                                                ? "bg-yellow-200 text-yellow-800 cursor-not-allowed"
+                                                                : "bg-yellow-500 text-white hover:bg-yellow-600"
+                                                        }`}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(q.id)}
+                                                        disabled={isConverted}
+                                                        title={isConverted ? "Converted quotations cannot be deleted" : "Delete quotation"}
+                                                        className={`px-2 py-1 rounded text-xs ${
+                                                            isConverted
+                                                                ? "bg-red-200 text-red-800 cursor-not-allowed"
+                                                                : "bg-red-500 text-white hover:bg-red-600"
+                                                        }`}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </>
+                                            )}
+                                            {isAccountant && q.status === "DRAFT" && (
                                                 <button
                                                     onClick={() => handleStatusChange(q.id, "SENT")}
                                                     className="bg-indigo-600 text-white px-2 py-1 rounded text-xs"
                                                 >
                                                     Send
                                                 </button>
-                                            </>
-                                        )}
-                                        {isAccountant && q.status === "SENT" && (
-                                            <>
+                                            )}
+                                            {isAccountant && q.status === "SENT" && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleStatusChange(q.id, "ACCEPTED")}
+                                                        className="bg-green-700 text-white px-2 py-1 rounded text-xs"
+                                                    >
+                                                        Accept
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStatusChange(q.id, "REJECTED")}
+                                                        className="bg-red-600 text-white px-2 py-1 rounded text-xs"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </>
+                                            )}
+                                            {(isAccountant || isAdmin) && q.status === "ACCEPTED" && (
                                                 <button
-                                                    onClick={() => handleStatusChange(q.id, "ACCEPTED")}
-                                                    className="bg-green-700 text-white px-2 py-1 rounded text-xs"
+                                                    onClick={() => handleConvertToOrder(q.id)}
+                                                    className="bg-purple-600 text-white px-2 py-1 rounded text-xs"
                                                 >
-                                                    Accept
+                                                    Convert to Order
                                                 </button>
-                                                <button
-                                                    onClick={() => handleStatusChange(q.id, "REJECTED")}
-                                                    className="bg-red-600 text-white px-2 py-1 rounded text-xs"
-                                                >
-                                                    Reject
-                                                </button>
-                                            </>
-                                        )}
-                                        {(isAccountant || isAdmin) && q.status === "ACCEPTED" && (
-                                            <button
-                                                onClick={() => handleConvertToOrder(q.id)}
-                                                className="bg-purple-600 text-white px-2 py-1 rounded text-xs"
-                                            >
-                                                Convert to Order
-                                            </button>
-                                        )}
-                                        {isAccountant && q.status !== "CONVERTED" && (
-                                            <button
-                                                onClick={() => handleDelete(q.id)}
-                                                className="bg-red-500 text-white px-2 py-1 rounded text-xs"
-                                            >
-                                                Delete
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             {quotations.length === 0 && (
                                 <tr>
                                     <td colSpan={7} className="border p-4 text-center text-gray-500">

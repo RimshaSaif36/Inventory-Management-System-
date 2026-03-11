@@ -45,6 +45,9 @@ app.use(cors());
 // Enable gzip compression for all responses
 app.use(compression());
 
+// Serve local uploads when Cloudinary is disabled/unavailable
+app.use("/uploads", express.static(path.resolve(__dirname, "../uploads")));
+
 // Set cache headers for static and API responses
 app.use((req, res, next) => {
   res.setHeader("Cache-Control", "public, max-age=60");

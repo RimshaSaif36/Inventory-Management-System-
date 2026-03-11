@@ -38,6 +38,12 @@ const CardPopularProducts = () => {
                     width={48}
                     height={48}
                     className="rounded-lg w-14 h-14"
+                    onError={(event) => {
+                      const target = event.currentTarget as HTMLImageElement;
+                      if (!target.src.endsWith("/logo.jpg")) {
+                        target.src = "/logo.jpg";
+                      }
+                    }}
                     unoptimized
                   />
                   <div className="flex flex-col justify-between gap-1">

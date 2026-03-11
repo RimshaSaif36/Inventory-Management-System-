@@ -45,20 +45,28 @@ const SidebarLink = ({
   const isActive =
     pathname === href || (pathname === "/" && href === "/dashboard");
 
+  const baseClasses = isCollapsed
+    ? "justify-center py-4"
+    : "justify-start px-8 py-4";
+  const activeClasses = isActive
+    ? "bg-blue-100 text-blue-700 dark:bg-slate-800 dark:text-blue-200"
+    : "text-gray-700 dark:text-slate-200";
+  const hoverClasses =
+    "hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 dark:hover:text-blue-200";
+  const iconClasses = isActive
+    ? "text-blue-600 dark:text-blue-200"
+    : "text-gray-500 dark:text-slate-300";
+
   return (
     <Link href={href}>
       <div
-        className={`cursor-pointer flex items-center ${isCollapsed ? "justify-center py-4" : "justify-start px-8 py-4"
-          }
-        hover:text-blue-500 hover:bg-blue-100 gap-3 transition-colors ${isActive ? "bg-blue-200 text-white" : ""
-          }
-      }`}
+        className={`cursor-pointer flex items-center ${baseClasses} ${hoverClasses} ${activeClasses} gap-3 transition-colors`}
       >
-        <Icon className="w-6 h-6 !text-gray-700" />
+        <Icon className={`w-6 h-6 ${iconClasses}`} />
 
         <span
           className={`${isCollapsed ? "hidden" : "block"
-            } font-medium text-gray-700`}
+            } font-medium`}
         >
           {label}
         </span>
@@ -84,7 +92,7 @@ const Sidebar = () => {
   const isSalesman = role === "SALESMAN";
 
   const sidebarClassNames = `fixed flex flex-col ${isSidebarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
-    } bg-white transition-all duration-300 overflow-hidden h-full shadow-md z-40`;
+    } bg-white dark:bg-slate-950 transition-all duration-300 overflow-hidden h-full shadow-md z-40 border-r border-gray-200 dark:border-slate-800`;
 
   return (
     <div className={sidebarClassNames}>
@@ -109,7 +117,7 @@ const Sidebar = () => {
 
 
         <button
-          className="md:hidden px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100"
+          className="md:hidden px-3 py-3 bg-gray-100 dark:bg-slate-800 rounded-full hover:bg-blue-100 dark:hover:bg-slate-700"
           onClick={toggleSidebar}
         >
           <Menu className="w-4 h-4" />
@@ -305,7 +313,7 @@ const Sidebar = () => {
 
       {/* FOOTER */}
       <div className={`${isSidebarCollapsed ? "hidden" : "block"} mb-10`}>
-        <p className="text-center text-xs text-gray-500">&copy; 2026 Khtab Engineering and Services</p>
+        <p className="text-center text-xs text-gray-500 dark:text-slate-500">&copy; 2026 Khtab Engineering and Services</p>
       </div>
     </div>
   );

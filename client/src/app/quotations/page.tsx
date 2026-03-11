@@ -413,11 +413,10 @@ export default function QuotationsPage() {
                                                         onClick={() => handleEdit(q)}
                                                         disabled={isConverted}
                                                         title={isConverted ? "Converted quotations cannot be edited" : "Edit quotation"}
-                                                        className={`px-2 py-1 rounded text-xs ${
-                                                            isConverted
+                                                        className={`px-2 py-1 rounded text-xs ${isConverted
                                                                 ? "bg-yellow-200 text-yellow-800 cursor-not-allowed"
                                                                 : "bg-yellow-500 text-white hover:bg-yellow-600"
-                                                        }`}
+                                                            }`}
                                                     >
                                                         Edit
                                                     </button>
@@ -425,11 +424,10 @@ export default function QuotationsPage() {
                                                         onClick={() => handleDelete(q.id)}
                                                         disabled={isConverted}
                                                         title={isConverted ? "Converted quotations cannot be deleted" : "Delete quotation"}
-                                                        className={`px-2 py-1 rounded text-xs ${
-                                                            isConverted
+                                                        className={`px-2 py-1 rounded text-xs ${isConverted
                                                                 ? "bg-red-200 text-red-800 cursor-not-allowed"
                                                                 : "bg-red-500 text-white hover:bg-red-600"
-                                                        }`}
+                                                            }`}
                                                     >
                                                         Delete
                                                     </button>

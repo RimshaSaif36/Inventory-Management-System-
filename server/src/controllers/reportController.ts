@@ -1,18 +1,48 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { AuthenticatedRequest } from "../middleware/auth";
+
+const resolveStoreId = async (
+  req: Request,
+  res: Response
+): Promise<string | null> => {
+  const requestUser = req as AuthenticatedRequest;
+  let storeId = req.query.storeId?.toString() || requestUser.user?.storeId;
+
+  if (storeId) {
+    const store = await prisma.store.findUnique({ where: { id: storeId } });
+    if (!store) {
+      res.status(400).json({ message: "Store not found" });
+      return null;
+    }
+    return storeId;
+  }
+
+  const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+  if (stores.length === 1) {
+    return stores[0].id;
+  }
+
+  if (stores.length === 0) {
+    const defaultStore = await prisma.store.create({
+      data: { name: "Default Store", location: "Main Warehouse" },
+    });
+    return defaultStore.id;
+  }
+
+  res.status(400).json({ message: "storeId is required when multiple stores exist" });
+  return null;
+};
 
 export const getDailySalesReport = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    const storeId = await resolveStoreId(req, res);
     const date = req.query.date?.toString() || new Date().toISOString().split("T")[0];
 
-    if (!storeId) {
-      res.status(400).json({ message: "Store ID is required" });
-      return;
-    }
+    if (!storeId) return;
 
     const startDate = new Date(date);
     const endDate = new Date(date);
@@ -52,7 +82,7 @@ export const getWeeklySalesReport = async (
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    const storeId = await resolveStoreId(req, res);
     const startDate = req.query.startDate?.toString();
 
     if (!storeId || !startDate) {
@@ -99,7 +129,7 @@ export const getMonthlySalesReport = async (
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    const storeId = await resolveStoreId(req, res);
     const year = req.query.year?.toString();
     const month = req.query.month?.toString();
 
@@ -147,14 +177,11 @@ export const getProfitReport = async (
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    const storeId = await resolveStoreId(req, res);
     const startDate = req.query.startDate?.toString();
     const endDate = req.query.endDate?.toString();
 
-    if (!storeId) {
-      res.status(400).json({ message: "Store ID is required" });
-      return;
-    }
+    if (!storeId) return;
 
     const start = startDate ? new Date(startDate) : new Date(new Date().setDate(new Date().getDate() - 30));
     const end = endDate ? new Date(endDate) : new Date();
@@ -209,15 +236,12 @@ export const getPurchaseReport = async (
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    const storeId = await resolveStoreId(req, res);
     const supplierId = req.query.supplierId?.toString();
     const startDate = req.query.startDate?.toString();
     const endDate = req.query.endDate?.toString();
 
-    if (!storeId) {
-      res.status(400).json({ message: "Store ID is required" });
-      return;
-    }
+    if (!storeId) return;
 
     const purchases = await prisma.purchase.findMany({
       where: {
@@ -262,17 +286,63 @@ export const getPurchaseReport = async (
   }
 };
 
+export const getSalesReportRange = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const storeId = await resolveStoreId(req, res);
+    const startDate = req.query.startDate?.toString();
+    const endDate = req.query.endDate?.toString();
+
+    if (!storeId || !startDate || !endDate) {
+      res.status(400).json({ message: "Store ID, start date, and end date are required" });
+      return;
+    }
+
+    const sales = await prisma.sale.findMany({
+      where: {
+        storeId,
+        createdAt: {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        },
+      },
+      include: {
+        items: { include: { product: true } },
+        customer: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const totalSales = sales.reduce(
+      (sum: number, sale: { totalAmount?: number }) => sum + (sale.totalAmount ?? 0),
+      0
+    );
+    const totalTransactions = sales.length;
+
+    res.json({
+      sales,
+      summary: {
+        totalSales,
+        totalTransactions,
+        averageTransaction: totalTransactions > 0 ? totalSales / totalTransactions : 0,
+      },
+    });
+  } catch (error) {
+    console.error("getSalesReportRange error:", error);
+    res.status(500).json({ message: "Error generating sales report" });
+  }
+};
+
 export const getDashboardOverview = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    const storeId = await resolveStoreId(req, res);
 
-    if (!storeId) {
-      res.status(400).json({ message: "Store ID is required" });
-      return;
-    }
+    if (!storeId) return;
 
     // Get today's sales
     const today = new Date();

@@ -12,6 +12,7 @@ router.get("/dashboard", adminOrAccountant, reportController.getDashboardOvervie
 router.get("/daily-sales", adminOrAccountant, reportController.getDailySalesReport);
 router.get("/weekly-sales", adminOrAccountant, reportController.getWeeklySalesReport);
 router.get("/monthly-sales", adminOrAccountant, reportController.getMonthlySalesReport);
+router.get("/sales", adminOrAccountant, reportController.getSalesReportRange);
 router.get("/profit", adminOrAccountant, reportController.getProfitReport);
 router.get("/purchase", adminOrAccountant, reportController.getPurchaseReport);
 

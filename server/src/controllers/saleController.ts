@@ -1,16 +1,28 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { AuthenticatedRequest } from "../middleware/auth";
 
 export const getSales = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    const requestWithUser = req as AuthenticatedRequest;
+    let storeId = req.query.storeId?.toString() || requestWithUser.user?.storeId;
     const customerId = req.query.customerId?.toString();
     const page = Math.max(1, parseInt(req.query.page?.toString() || "1"));
     const pageSize = Math.min(50, parseInt(req.query.pageSize?.toString() || "20"));
     const skip = (page - 1) * pageSize;
+
+    if (!storeId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        storeId = stores[0].id;
+      } else if (stores.length > 1) {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
 
     const [sales, total] = await Promise.all([
       prisma.sale.findMany({
@@ -19,9 +31,7 @@ export const getSales = async (
           ...(customerId && { customerId }),
         },
         include: {
-          items: { include: { product: { select: { id: true, name: true, sellingPrice: true, imageUrl: true } } } },
           customer: { select: { id: true, name: true } },
-          store: { select: { id: true, name: true } },
           user: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: "desc" },

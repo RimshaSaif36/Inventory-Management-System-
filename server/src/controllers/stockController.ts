@@ -301,7 +301,17 @@ export const getStockReport = async (
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    let storeId = req.query.storeId?.toString();
+
+    if (!storeId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        storeId = stores[0].id;
+      } else if (stores.length > 1) {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
 
     if (!storeId) {
       res.status(400).json({ message: "Store ID is required" });

@@ -27,18 +27,15 @@ export default function ReportsPage() {
   const storeId = user?.storeId || "";
 
   useEffect(() => {
-    if (storeId) {
-      fetchReport();
-    }
+    fetchReport();
   }, [reportType, storeId]);
 
   const fetchReport = async () => {
-    if (!storeId) return;
-
     setLoading(true);
     try {
       let url = "";
-      const params: any = { storeId };
+      const params: any = {};
+      if (storeId) params.storeId = storeId;
 
       switch (reportType) {
         case "DASHBOARD":
@@ -133,13 +130,25 @@ export default function ReportsPage() {
               <div className="bg-white p-6 rounded-lg border">
                 <p className="text-gray-600">Today's Sales</p>
                 <p className="text-3xl font-bold">
-                  PKR {reportData?.summary?.todaysSales?.totalAmount?.toFixed(2) || 0}
+                  PKR {reportData?.todaysSales?.totalAmount?.toFixed(2) || 0}
                 </p>
               </div>
               <div className="bg-white p-6 rounded-lg border">
                 <p className="text-gray-600">Inventory Value</p>
                 <p className="text-3xl font-bold">
-                  PKR {reportData?.summary?.inventory?.totalValue?.toFixed(2) || 0}
+                  PKR {reportData?.inventory?.totalValue?.toFixed(2) || 0}
+                </p>
+              </div>
+              <div className="bg-white p-6 rounded-lg border">
+                <p className="text-gray-600">Low Stock Items</p>
+                <p className="text-3xl font-bold">
+                  {reportData?.inventory?.lowStockItems || 0}
+                </p>
+              </div>
+              <div className="bg-white p-6 rounded-lg border">
+                <p className="text-gray-600">Pending Orders</p>
+                <p className="text-3xl font-bold">
+                  {reportData?.pendingOrders || 0}
                 </p>
               </div>
             </>
@@ -171,6 +180,19 @@ export default function ReportsPage() {
               <div className="bg-white p-6 rounded-lg border">
                 <p className="text-gray-600">Total Sales</p>
                 <p className="text-3xl font-bold">PKR {reportData?.summary?.totalSales?.toFixed(2) || 0}</p>
+              </div>
+              <div className="bg-white p-6 rounded-lg border">
+                <p className="text-gray-600">Total Transactions</p>
+                <p className="text-3xl font-bold">{reportData?.summary?.totalTransactions || 0}</p>
+              </div>
+            </>
+          )}
+
+          {reportType === "PURCHASE" && (
+            <>
+              <div className="bg-white p-6 rounded-lg border">
+                <p className="text-gray-600">Total Purchases</p>
+                <p className="text-3xl font-bold">PKR {reportData?.summary?.totalPurchases?.toFixed(2) || 0}</p>
               </div>
               <div className="bg-white p-6 rounded-lg border">
                 <p className="text-gray-600">Total Transactions</p>

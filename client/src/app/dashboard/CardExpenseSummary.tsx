@@ -2,8 +2,8 @@ import {
   ExpenseByCategorySummary,
   useGetDashboardMetricsQuery,
 } from "@/state/api";
-import { TrendingUp } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import { useAppSelector } from "@/app/redux";
 
 type ExpenseSums = {
   [category: string]: number;
@@ -12,7 +12,8 @@ type ExpenseSums = {
 const colors = ["#00C49F", "#0088FE", "#FFBB28"];
 
 const CardExpenseSummary = () => {
-  const { data: dashboardMetrics, isLoading } = useGetDashboardMetricsQuery();
+  const storeId = useAppSelector((state) => state.user.currentUser?.storeId);
+  const { data: dashboardMetrics, isLoading } = useGetDashboardMetricsQuery(storeId || undefined);
 
   const expenseSummary = dashboardMetrics?.expenseSummary[0];
 
@@ -22,7 +23,8 @@ const CardExpenseSummary = () => {
   const expenseSums = expenseByCategorySummary.reduce(
     (acc: ExpenseSums, item: ExpenseByCategorySummary) => {
       const category = item.category + " Expenses";
-      const amount = parseInt(item.amount, 10);
+      const amount = Number(item.amount);
+      if (!Number.isFinite(amount)) return acc;
       if (!acc[category]) acc[category] = 0;
       acc[category] += amount;
       return acc;
@@ -37,10 +39,12 @@ const CardExpenseSummary = () => {
     })
   );
 
-  const totalExpenses = expenseCategories.reduce(
-    (acc, category: { value: number }) => acc + category.value,
-    0
-  );
+  const totalExpenses = expenseCategories.length
+    ? expenseCategories.reduce(
+      (acc, category: { value: number }) => acc + category.value,
+      0
+    )
+    : expenseSummary?.totalExpenses || 0;
   const formattedTotalExpenses = totalExpenses.toFixed(2);
 
   return (
@@ -116,10 +120,6 @@ const CardExpenseSummary = () => {
                     </span>
                   </p>
                 </div>
-                <span className="flex items-center mt-2">
-                  <TrendingUp className="mr-2 text-green-500" />
-                  30%
-                </span>
               </div>
             )}
           </div>

@@ -17,6 +17,7 @@ import {
 import { useAppSelector } from "@/app/redux";
 import { apiClient } from "@/lib/apiClient";
 import StatCard from "./StatCard";
+import { useGetDashboardMetricsQuery } from "@/state/api";
 
 // Lazy load heavy components
 const CardExpenseSummary = lazy(() => import("./CardExpenseSummary"));
@@ -59,13 +60,16 @@ const AdminDashboard = () => {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [employees, setEmployees] = useState<EmployeeSale[]>([]);
   const [loading, setLoading] = useState(true);
+  const user = useAppSelector((state) => state.user.currentUser);
+  const storeId = user?.storeId;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const params = storeId ? { storeId } : undefined;
         const [overviewRes, employeesRes] = await Promise.all([
-          apiClient.get("/dashboard/admin-overview"),
-          apiClient.get("/dashboard/employee-sales"),
+          apiClient.get("/dashboard/admin-overview", { params }),
+          apiClient.get("/dashboard/employee-sales", { params }),
         ]);
         setOverview(overviewRes.data);
         setEmployees(employeesRes.data);
@@ -76,7 +80,7 @@ const AdminDashboard = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [storeId]);
 
   return (
     <>
@@ -342,6 +346,17 @@ const SalesmanDashboard = () => {
 const Dashboard = () => {
   const user = useAppSelector((state) => state.user.currentUser);
   const role = user?.role;
+  const storeId = user?.storeId;
+  const { data: dashboardMetrics } = useGetDashboardMetricsQuery(storeId || undefined);
+
+  const totalSales =
+    dashboardMetrics?.salesSummary?.reduce((sum, s) => sum + s.totalValue, 0) || 0;
+  const totalPurchases =
+    dashboardMetrics?.purchaseSummary?.reduce((sum, p) => sum + p.totalPurchased, 0) || 0;
+  const totalExpenses = dashboardMetrics?.expenseSummary?.[0]?.totalExpenses || 0;
+  const totalCustomers = dashboardMetrics?.totalCustomers || 0;
+  const pendingOrders = dashboardMetrics?.pendingOrders || 0;
+  const unpaidInvoicesTotal = dashboardMetrics?.unpaidInvoicesTotal || 0;
 
   if (role === "SALESMAN") {
     return (
@@ -372,18 +387,18 @@ const Dashboard = () => {
           <StatCard
             title="Customer & Expenses"
             primaryIcon={<Package className="text-blue-600 w-6 h-6" />}
-            dateRange="22 - 29 October 2023"
+            dateRange="Last 30 days"
             details={[
               {
                 title: "Customer Growth",
-                amount: "175.00",
-                changePercentage: 131,
+                amount: totalCustomers.toLocaleString("en-PK"),
+                changePercentage: 0,
                 IconComponent: TrendingUp,
               },
               {
                 title: "Expenses",
-                amount: "10.00",
-                changePercentage: -56,
+                amount: `PKR ${totalExpenses.toLocaleString("en-PK", { maximumFractionDigits: 2 })}`,
+                changePercentage: 0,
                 IconComponent: TrendingDown,
               },
             ]}
@@ -391,37 +406,37 @@ const Dashboard = () => {
           <StatCard
             title="Dues & Pending Orders"
             primaryIcon={<CheckCircle className="text-blue-600 w-6 h-6" />}
-            dateRange="22 - 29 October 2023"
+            dateRange="Last 30 days"
             details={[
               {
                 title: "Dues",
-                amount: "250.00",
-                changePercentage: 131,
+                amount: `PKR ${unpaidInvoicesTotal.toLocaleString("en-PK", { maximumFractionDigits: 2 })}`,
+                changePercentage: 0,
                 IconComponent: TrendingUp,
               },
               {
                 title: "Pending Orders",
-                amount: "147",
-                changePercentage: -56,
+                amount: pendingOrders.toLocaleString("en-PK"),
+                changePercentage: 0,
                 IconComponent: TrendingDown,
               },
             ]}
           />
           <StatCard
-            title="Sales & Discount"
+            title="Sales & Purchases"
             primaryIcon={<Tag className="text-blue-600 w-6 h-6" />}
-            dateRange="22 - 29 October 2023"
+            dateRange="Last 30 days"
             details={[
               {
                 title: "Sales",
-                amount: "1000.00",
-                changePercentage: 20,
+                amount: `PKR ${totalSales.toLocaleString("en-PK", { maximumFractionDigits: 2 })}`,
+                changePercentage: 0,
                 IconComponent: TrendingUp,
               },
               {
-                title: "Discount",
-                amount: "200.00",
-                changePercentage: -10,
+                title: "Purchases",
+                amount: `PKR ${totalPurchases.toLocaleString("en-PK", { maximumFractionDigits: 2 })}`,
+                changePercentage: 0,
                 IconComponent: TrendingDown,
               },
             ]}

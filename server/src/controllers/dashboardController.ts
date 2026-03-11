@@ -6,7 +6,17 @@ export const getDashboardMetrics = async (
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    let storeId = req.query.storeId?.toString();
+
+    if (!storeId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        storeId = stores[0].id;
+      } else if (stores.length > 1) {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
 
     const popularProducts = await prisma.product.findMany({
       take: 15,
@@ -73,11 +83,26 @@ export const getDashboardMetrics = async (
       date,
     }));
 
-    // Expense summary
-    const expenseAgg = await prisma.expense.aggregate({
-      where: storeId ? { storeId } : undefined,
-      _sum: { amount: true },
-    });
+    const [expenseAgg, totalCustomers, pendingOrders, unpaidInvoicesAgg] = await Promise.all([
+      prisma.expense.aggregate({
+        where: storeId ? { storeId } : undefined,
+        _sum: { amount: true },
+      }),
+      prisma.customer.count(),
+      prisma.salesOrder.count({
+        where: {
+          ...(storeId && { storeId }),
+          status: { in: ["PENDING", "RESERVED", "CONFIRMED"] },
+        },
+      }),
+      prisma.invoice.aggregate({
+        where: {
+          ...(storeId && { storeId }),
+          status: { in: ["UNPAID", "PARTIAL"] },
+        },
+        _sum: { totalAmount: true },
+      }),
+    ]);
     const expenseSummary = [
       {
         expenseSummarId: "es-1",
@@ -105,6 +130,9 @@ export const getDashboardMetrics = async (
       purchaseSummary,
       expenseSummary,
       expenseByCategorySummary,
+      totalCustomers,
+      pendingOrders,
+      unpaidInvoicesTotal: unpaidInvoicesAgg._sum.totalAmount || 0,
     });
   } catch (error) {
     console.error("getDashboardMetrics error:", error);
@@ -118,9 +146,19 @@ export const getEmployeeSalesReport = async (
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    let storeId = req.query.storeId?.toString();
     const startDate = req.query.startDate?.toString();
     const endDate = req.query.endDate?.toString();
+
+    if (!storeId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        storeId = stores[0].id;
+      } else if (stores.length > 1) {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
 
     const dateFilter: any = {};
     if (startDate) dateFilter.gte = new Date(startDate);
@@ -174,7 +212,17 @@ export const getAdminOverview = async (
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    let storeId = req.query.storeId?.toString();
+
+    if (!storeId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        storeId = stores[0].id;
+      } else if (stores.length > 1) {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

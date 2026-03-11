@@ -21,14 +21,6 @@ const StatCard = ({
   details,
   dateRange,
 }: StatCardProps) => {
-  const formatPercentage = (value: number) => {
-    const signal = value >= 0 ? "+" : "";
-    return `${signal}${value.toFixed()}%`;
-  };
-
-  const getChangeColor = (value: number) =>
-    value >= 0 ? "text-green-500" : "text-red-500";
-
   return (
     <div className="md:row-span-1 xl:row-span-2 bg-white col-span-1 shadow-md rounded-2xl flex flex-col justify-between">
       {/* HEADER */}
@@ -51,21 +43,6 @@ const StatCard = ({
               <div className="flex items-center justify-between my-4">
                 <span className="text-gray-500">{detail.title}</span>
                 <span className="font-bold text-gray-800">{detail.amount}</span>
-                <div className="flex items-center">
-                  <detail.IconComponent
-                    className={`w-4 h-4 mr-1 ${getChangeColor(
-                      detail.changePercentage
-                    )}`}
-                  />
-
-                  <span
-                    className={`font-medium ${getChangeColor(
-                      detail.changePercentage
-                    )}`}
-                  >
-                    {formatPercentage(detail.changePercentage)}
-                  </span>
-                </div>
               </div>
               {index < details.length - 1 && <hr />}
             </React.Fragment>

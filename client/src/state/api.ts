@@ -142,6 +142,9 @@ export interface DashboardMetrics {
   purchaseSummary: PurchaseSummary[];
   expenseSummary: ExpenseSummary[];
   expenseByCategorySummary: ExpenseByCategorySummary[];
+  totalCustomers?: number;
+  pendingOrders?: number;
+  unpaidInvoicesTotal?: number;
 }
 
 export interface User {
@@ -217,8 +220,11 @@ export const api = createApi({
   reducerPath: "api",
   tagTypes: ["DashboardMetrics", "Products", "Users", "Expenses", "Brands", "Categories", "Series", "Stock"],
   endpoints: (build) => ({
-    getDashboardMetrics: build.query<DashboardMetrics, void>({
-      query: () => "/dashboard",
+    getDashboardMetrics: build.query<DashboardMetrics, string | undefined>({
+      query: (storeId) => ({
+        url: "/dashboard",
+        params: storeId ? { storeId } : undefined,
+      }),
       providesTags: ["DashboardMetrics"],
     }),
     // Brand endpoints

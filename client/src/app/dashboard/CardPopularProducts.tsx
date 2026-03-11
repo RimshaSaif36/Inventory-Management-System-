@@ -4,9 +4,11 @@ import React from "react";
 import Rating from "../(components)/Rating";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useAppSelector } from "@/app/redux";
 
 const CardPopularProducts = () => {
-  const { data: dashboardMetrics, isLoading } = useGetDashboardMetricsQuery();
+  const storeId = useAppSelector((state) => state.user.currentUser?.storeId);
+  const { data: dashboardMetrics, isLoading } = useGetDashboardMetricsQuery(storeId || undefined);
   const router = useRouter();
 
   return (

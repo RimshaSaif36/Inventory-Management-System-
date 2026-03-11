@@ -10,9 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useAppSelector } from "@/app/redux";
 
 const CardPurchaseSummary = () => {
-  const { data, isLoading } = useGetDashboardMetricsQuery();
+  const storeId = useAppSelector((state) => state.user.currentUser?.storeId);
+  const { data, isLoading } = useGetDashboardMetricsQuery(storeId || undefined);
   const purchaseData = data?.purchaseSummary || [];
 
   const lastDataPoint = purchaseData[purchaseData.length - 1] || null;

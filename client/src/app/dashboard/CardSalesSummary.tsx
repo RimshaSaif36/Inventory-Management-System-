@@ -1,41 +1,135 @@
 import { useGetDashboardMetricsQuery } from "@/state/api";
-import { TrendingUp } from "lucide-react";
 import React, { useState } from "react";
 import {
-  Bar,
-  BarChart,
+  Area,
+  AreaChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { useAppSelector } from "@/app/redux";
 
 const CardSalesSummary = () => {
-  const { data, isLoading, isError } = useGetDashboardMetricsQuery();
+  const storeId = useAppSelector((state) => state.user.currentUser?.storeId);
+  const { data, isLoading, isError } = useGetDashboardMetricsQuery(storeId || undefined);
   const salesData = data?.salesSummary || [];
 
   const [timeframe, setTimeframe] = useState("weekly");
 
+  const sortedData = [...salesData].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  const toDateKey = (date: Date) => {
+    const copy = new Date(date);
+    copy.setHours(0, 0, 0, 0);
+    return copy.toISOString().split("T")[0];
+  };
+
+  const getWeekStart = (date: Date) => {
+    const copy = new Date(date);
+    const day = copy.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    copy.setDate(copy.getDate() + diff);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  };
+
+  const buildChangeSeries = (
+    series: Array<{ date: string; totalValue: number }>
+  ) =>
+    series.map((item, index) => {
+      const prev = index > 0 ? series[index - 1].totalValue : 0;
+      const changePercentage = prev
+        ? ((item.totalValue - prev) / prev) * 100
+        : 0;
+      return {
+        salesSummaryId: `ss-${item.date}`,
+        date: item.date,
+        totalValue: item.totalValue,
+        changePercentage,
+      };
+    });
+
+  const displayData = (() => {
+    if (timeframe === "daily") {
+      const lastDays = sortedData.slice(-7);
+      return buildChangeSeries(
+        lastDays.map((item) => ({
+          date: item.date,
+          totalValue: item.totalValue,
+        }))
+      );
+    }
+
+    if (timeframe === "weekly") {
+      const weeklyMap = new Map<string, number>();
+      for (const item of sortedData) {
+        const weekStart = getWeekStart(new Date(item.date));
+        const key = toDateKey(weekStart);
+        weeklyMap.set(key, (weeklyMap.get(key) || 0) + item.totalValue);
+      }
+      const weeklySeries = Array.from(weeklyMap.entries())
+        .map(([date, totalValue]) => ({ date, totalValue }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      return buildChangeSeries(weeklySeries);
+    }
+
+    const monthlyMap = new Map<string, number>();
+    for (const item of sortedData) {
+      const d = new Date(item.date);
+      const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
+      const key = toDateKey(monthStart);
+      monthlyMap.set(key, (monthlyMap.get(key) || 0) + item.totalValue);
+    }
+    const monthlySeries = Array.from(monthlyMap.entries())
+      .map(([date, totalValue]) => ({ date, totalValue }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return buildChangeSeries(monthlySeries);
+  })();
+
   const totalValueSum =
-    salesData.reduce((acc, curr) => acc + curr.totalValue, 0) || 0;
+    displayData.reduce((acc, curr) => acc + curr.totalValue, 0) || 0;
 
-  const averageChangePercentage =
-    salesData.reduce((acc, curr, _, array) => {
-      return acc + curr.changePercentage! / array.length;
-    }, 0) || 0;
-
-  const highestValueData = salesData.reduce((acc, curr) => {
+  const highestValueData = displayData.reduce((acc, curr) => {
     return acc.totalValue > curr.totalValue ? acc : curr;
-  }, salesData[0] || {});
+  }, displayData[0] || {});
 
   const highestValueDate = highestValueData.date
     ? new Date(highestValueData.date).toLocaleDateString("en-US", {
-      month: "numeric",
+      month: "short",
       day: "numeric",
       year: "2-digit",
     })
     : "N/A";
+
+  const formatXAxis = (value: string) => {
+    const date = new Date(value);
+    if (timeframe === "monthly") {
+      return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+    }
+    if (timeframe === "weekly") {
+      return `Wk ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+    }
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const formatTooltipLabel = (label: string) => {
+    const date = new Date(label);
+    if (timeframe === "monthly") {
+      return `Month of ${date.toLocaleDateString("en-US", { month: "long", year: "numeric" })}`;
+    }
+    if (timeframe === "weekly") {
+      return `Week of ${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
+    }
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   if (isError) {
     return <div className="m-5">Failed to fetch data</div>;
@@ -66,10 +160,6 @@ const CardSalesSummary = () => {
                     maximumFractionDigits: 2,
                   })}
                 </span>
-                <span className="text-green-500 text-sm ml-2">
-                  <TrendingUp className="inline w-4 h-4 mr-1" />
-                  {averageChangePercentage.toFixed(2)}%
-                </span>
               </div>
               <select
                 className="shadow-sm border border-gray-300 bg-white p-2 rounded"
@@ -84,55 +174,70 @@ const CardSalesSummary = () => {
               </select>
             </div>
             {/* CHART */}
-            <ResponsiveContainer width="100%" height={350} className="px-7">
-              <BarChart
-                data={salesData}
-                margin={{ top: 0, right: 0, left: -25, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(value) => {
-                    const date = new Date(value);
-                    return `${date.getMonth() + 1}/${date.getDate()}`;
-                  }}
-                />
-                <YAxis
-                  tickFormatter={(value) => {
-                    return `PKR ${value.toLocaleString("en-PK")}`;
-                  }}
-                  tick={{ fontSize: 12, dx: -1 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  formatter={(value: number) => [
-                    `PKR ${value.toLocaleString("en")}`,
-                  ]}
-                  labelFormatter={(label) => {
-                    const date = new Date(label);
-                    return date.toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    });
-                  }}
-                />
-                <Bar
-                  dataKey="totalValue"
-                  fill="#3182ce"
-                  barSize={10}
-                  radius={[10, 10, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {displayData.length === 0 ? (
+              <div className="px-7 pb-6 text-sm text-gray-500">
+                No sales data available.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300} className="px-7">
+                <AreaChart
+                  data={displayData}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatXAxis}
+                    tickMargin={8}
+                    minTickGap={16}
+                  />
+                  <YAxis
+                    tickFormatter={(value) => value.toLocaleString("en-PK")}
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={70}
+                    label={{
+                      value: "PKR",
+                      angle: -90,
+                      position: "insideLeft",
+                      offset: 10,
+                      fill: "#6b7280",
+                      fontSize: 11,
+                    }}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [
+                      `PKR ${value.toLocaleString("en-PK")}`,
+                      "Sales",
+                    ]}
+                    labelFormatter={formatTooltipLabel}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="totalValue"
+                    stroke="#2563eb"
+                    fill="url(#salesFill)"
+                    strokeWidth={2}
+                    dot={{ r: 3, strokeWidth: 1, stroke: "#2563eb", fill: "#ffffff" }}
+                    activeDot={{ r: 5 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
           {/* FOOTER */}
           <div>
             <hr />
             <div className="flex justify-between items-center mt-6 text-sm px-7 mb-4">
-              <p>{salesData.length || 0} days</p>
+              <p>{displayData.length || 0} days</p>
               <p className="text-sm">
                 Highest Sales Date:{" "}
                 <span className="font-bold">{highestValueDate}</span>

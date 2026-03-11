@@ -12,7 +12,6 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const isSidebarCollapsed = useAppSelector(
     (state) => state.global.isSidebarCollapsed
   );
-  const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
 
   useEffect(() => {
     // Suppress console errors (only once)
@@ -36,20 +35,17 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  // Optimize dark mode application
   useEffect(() => {
     if (typeof document === "undefined") return;
 
     const root = document.documentElement;
-    const method = isDarkMode ? "add" : "remove";
-    root.classList[method]("dark");
-    root.classList[method === "add" ? "remove" : "add"]("light");
-  }, [isDarkMode]);
+    root.classList.remove("dark");
+    root.classList.add("light");
+  }, []);
 
   return (
     <div
-      className={`${isDarkMode ? "dark" : "light"
-        } flex bg-gray-50 text-gray-900 w-full min-h-screen`}
+      className="light flex bg-gray-50 text-gray-900 w-full min-h-screen"
     >
       <Sidebar />
       <main

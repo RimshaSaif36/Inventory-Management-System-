@@ -3,14 +3,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Header from "@/app/(components)/Header";
 import { useAppDispatch, useAppSelector } from "@/app/redux";
-import { setIsDarkMode, setLanguage, setNotificationsEnabled } from "@/state";
+import { setLanguage, setNotificationsEnabled } from "@/state";
 import { updateUserProfile } from "@/state/userSlice";
 import { apiClient } from "@/lib/apiClient";
 
 const Settings = () => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.user.currentUser);
-  const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
   const notificationsEnabled = useAppSelector(
     (state) => state.global.notificationsEnabled
   );
@@ -75,7 +74,6 @@ const Settings = () => {
   }
 
   const resolvedNotificationsEnabled = notificationsEnabled ?? true;
-  const resolvedIsDarkMode = isDarkMode ?? false;
   const resolvedLanguage = language || "English";
 
   return (
@@ -155,28 +153,6 @@ const Settings = () => {
                   className="sr-only peer"
                   checked={resolvedNotificationsEnabled}
                   onChange={() => dispatch(setNotificationsEnabled(!resolvedNotificationsEnabled))}
-                />
-                <div
-                  className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-blue-400 peer-focus:ring-4 
-                  transition peer-checked:after:translate-x-full peer-checked:after:border-white 
-                  after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white 
-                  after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all
-                  peer-checked:bg-blue-600"
-                ></div>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-700">Dark Mode</p>
-                <p className="text-xs text-gray-400">Toggle the app theme.</p>
-              </div>
-              <label className="inline-flex relative items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={resolvedIsDarkMode}
-                  onChange={() => dispatch(setIsDarkMode(!resolvedIsDarkMode))}
                 />
                 <div
                   className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-blue-400 peer-focus:ring-4 

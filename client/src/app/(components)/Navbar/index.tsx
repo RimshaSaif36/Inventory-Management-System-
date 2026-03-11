@@ -1,9 +1,9 @@
 "use client";
 
 import { useAppDispatch, useAppSelector } from "@/app/redux";
-import { setIsDarkMode, setIsSidebarCollapsed } from "@/state";
+import { setIsSidebarCollapsed } from "@/state";
 import { clearUser } from "@/state/userSlice";
-import { Bell, Menu, Moon, Settings, Sun, LogOut } from "lucide-react";
+import { Bell, Menu, Settings, LogOut } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useCallback, useEffect, useState } from "react";
@@ -18,7 +18,6 @@ const Navbar = () => {
   const isSidebarCollapsed = useAppSelector(
     (state) => state.global.isSidebarCollapsed
   );
-  const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
   const notificationsEnabled = useAppSelector(
     (state) => state.global.notificationsEnabled
   );
@@ -34,10 +33,6 @@ const Navbar = () => {
 
   const toggleSidebar = () => {
     dispatch(setIsSidebarCollapsed(!isSidebarCollapsed));
-  };
-
-  const toggleDarkMode = () => {
-    dispatch(setIsDarkMode(!isDarkMode));
   };
 
   const fetchUnreadCount = useCallback(async () => {
@@ -106,15 +101,6 @@ const Navbar = () => {
       {/* RIGHT SIDE */}
       <div className="flex justify-between items-center gap-5">
         <div className="hidden md:flex justify-between items-center gap-5">
-          <div>
-            <button onClick={toggleDarkMode}>
-              {isDarkMode ? (
-                <Sun className="cursor-pointer text-gray-500" size={24} />
-              ) : (
-                <Moon className="cursor-pointer text-gray-500" size={24} />
-              )}
-            </button>
-          </div>
           {canViewNotifications && (
             <button
               type="button"

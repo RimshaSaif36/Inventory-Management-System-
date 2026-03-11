@@ -45,10 +45,10 @@ const PrismaClientCtor =
 // Ensure a single PrismaClient instance
 export const prisma: PrismaClient =
   (globalThis.prisma ||
-  new PrismaClientCtor({
-    adapter,
-    log: ["error", "warn"],
-  })) as PrismaClient;
+    new PrismaClientCtor({
+      adapter,
+      log: ["error", "warn"],
+    })) as PrismaClient;
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.prisma = prisma;

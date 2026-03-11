@@ -82,9 +82,9 @@ export const createSeries = async (
             return;
         }
 
-        const series = await prisma.series.create({ 
-            data: { name, description, categoryId }, 
-            include: { category: true } 
+        const series = await prisma.series.create({
+            data: { name, description, categoryId },
+            include: { category: true }
         });
         res.status(201).json(series);
     } catch (error) {
@@ -113,10 +113,10 @@ export const updateSeries = async (
 
         const series = await prisma.series.update({
             where: { id },
-            data: { 
-                ...(name && { name }), 
-                ...(description !== undefined && { description }), 
-                ...(categoryId && { categoryId }) 
+            data: {
+                ...(name && { name }),
+                ...(description !== undefined && { description }),
+                ...(categoryId && { categoryId })
             },
             include: { category: true },
         });

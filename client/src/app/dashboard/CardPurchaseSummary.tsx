@@ -44,11 +44,10 @@ const CardPurchaseSummary = () => {
                 </p>
                 {lastDataPoint && (
                   <p
-                    className={`text-sm ${
-                      lastDataPoint.changePercentage! >= 0
+                    className={`text-sm ${lastDataPoint.changePercentage! >= 0
                         ? "text-green-500"
                         : "text-red-500"
-                    } flex ml-3`}
+                      } flex ml-3`}
                   >
                     {lastDataPoint.changePercentage! >= 0 ? (
                       <TrendingUp className="w-5 h-5 mr-1" />

@@ -31,10 +31,10 @@ const CardSalesSummary = () => {
 
   const highestValueDate = highestValueData.date
     ? new Date(highestValueData.date).toLocaleDateString("en-US", {
-        month: "numeric",
-        day: "numeric",
-        year: "2-digit",
-      })
+      month: "numeric",
+      day: "numeric",
+      year: "2-digit",
+    })
     : "N/A";
 
   if (isError) {

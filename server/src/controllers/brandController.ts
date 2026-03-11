@@ -74,12 +74,12 @@ export const updateBrand = async (
         const { brandId } = req.params;
         const { name, description } = req.body;
 
-        const brand = await prisma.brand.update({ 
-            where: { id: brandId }, 
-            data: { 
+        const brand = await prisma.brand.update({
+            where: { id: brandId },
+            data: {
                 ...(name && { name }),
                 ...(description !== undefined && { description })
-            } 
+            }
         });
 
         res.json(brand);

@@ -80,9 +80,9 @@ export const createCategory = async (
             return;
         }
 
-        const category = await prisma.category.create({ 
-            data: { name, description, brandId }, 
-            include: { brand: true } 
+        const category = await prisma.category.create({
+            data: { name, description, brandId },
+            include: { brand: true }
         });
         res.status(201).json(category);
     } catch (error) {
@@ -111,10 +111,10 @@ export const updateCategory = async (
 
         const category = await prisma.category.update({
             where: { id: categoryId },
-            data: { 
-                ...(name && { name }), 
-                ...(description !== undefined && { description }), 
-                ...(brandId && { brandId }) 
+            data: {
+                ...(name && { name }),
+                ...(description !== undefined && { description }),
+                ...(brandId && { brandId })
             },
             include: { brand: true },
         });

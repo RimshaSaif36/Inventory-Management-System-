@@ -47,8 +47,8 @@ const CardPurchaseSummary = () => {
                 {lastDataPoint && (
                   <p
                     className={`text-sm ${lastDataPoint.changePercentage! >= 0
-                        ? "text-green-500"
-                        : "text-red-500"
+                      ? "text-green-500"
+                      : "text-red-500"
                       } flex ml-3`}
                   >
                     {lastDataPoint.changePercentage! >= 0 ? (

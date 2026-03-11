@@ -132,18 +132,95 @@ export const deleteCategory = async (
     try {
         const { categoryId } = req.params;
 
-        // Check if category has series
-        const seriesCount = await prisma.series.count({ where: { categoryId } });
-
-        if (seriesCount > 0) {
-            res.status(400).json({ message: "Cannot delete category with existing series. Please delete series first." });
+        if (!categoryId) {
+            res.status(400).json({ message: "Category ID is required" });
             return;
         }
 
-        await prisma.category.delete({ where: { id: categoryId } });
+        const category = await prisma.category.findUnique({
+            where: { id: categoryId },
+            select: { id: true },
+        });
+
+        if (!category) {
+            res.status(404).json({ message: "Category not found" });
+            return;
+        }
+
+        const series = await prisma.series.findMany({
+            where: { categoryId },
+            select: { id: true },
+        });
+        const seriesIds = series.map((item) => item.id);
+
+        let products: Array<{ id: string; _count: { saleItems: number; orderItems: number; purchaseItems: number; quotationItems: number } }> = [];
+        if (seriesIds.length > 0) {
+            products = await prisma.product.findMany({
+                where: { seriesId: { in: seriesIds } },
+                select: {
+                    id: true,
+                    _count: {
+                        select: {
+                            saleItems: true,
+                            orderItems: true,
+                            purchaseItems: true,
+                            quotationItems: true,
+                        },
+                    },
+                },
+            });
+        }
+
+        const blockedProducts = products.filter((product) => {
+            const counts = product._count;
+            return (
+                counts.saleItems > 0 ||
+                counts.orderItems > 0 ||
+                counts.purchaseItems > 0 ||
+                counts.quotationItems > 0
+            );
+        });
+
+        if (blockedProducts.length > 0) {
+            res.status(400).json({
+                message:
+                    "Cannot delete category because some products are referenced by sales, orders, purchases, or quotations. Remove related records first.",
+            });
+            return;
+        }
+
+        const productIds = products.map((product) => product.id);
+
+        await prisma.$transaction(async (tx) => {
+            if (productIds.length > 0) {
+                await tx.stockMovement.deleteMany({
+                    where: { stock: { productId: { in: productIds } } },
+                });
+                await tx.stock.deleteMany({
+                    where: { productId: { in: productIds } },
+                });
+                await tx.product.deleteMany({
+                    where: { id: { in: productIds } },
+                });
+            }
+            if (seriesIds.length > 0) {
+                await tx.series.deleteMany({
+                    where: { id: { in: seriesIds } },
+                });
+            }
+            await tx.category.delete({ where: { id: categoryId } });
+        });
 
         res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
+        if (error?.code === "P2025") {
+            res.status(404).json({ message: "Category not found" });
+            return;
+        }
+        if (error?.code === "P2003") {
+            res.status(400).json({ message: "Cannot delete category because it is referenced by other records." });
+            return;
+        }
         res.status(500).json({ message: "Error deleting category" });
     }
 };

@@ -135,19 +135,87 @@ export const deleteSeries = async (
     try {
         const { id } = req.params;
 
-        // Check if series has products
-        const productsCount = await prisma.product.count({ where: { seriesId: id } });
+        if (!id) {
+            res.status(400).json({ message: "Series ID is required" });
+            return;
+        }
 
-        if (productsCount > 0) {
-            res.status(400).json({ message: "Cannot delete series with existing products. Please delete products first." });
+        const series = await prisma.series.findUnique({
+            where: { id },
+            select: { id: true },
+        });
+
+        if (!series) {
+            res.status(404).json({ message: "Series not found" });
+            return;
+        }
+
+        const products = await prisma.product.findMany({
+            where: { seriesId: id },
+            select: {
+                id: true,
+                _count: {
+                    select: {
+                        saleItems: true,
+                        orderItems: true,
+                        purchaseItems: true,
+                        quotationItems: true,
+                    },
+                },
+            },
+        });
+
+        const blockedProducts = products.filter((product) => {
+            const counts = product._count;
+            return (
+                counts.saleItems > 0 ||
+                counts.orderItems > 0 ||
+                counts.purchaseItems > 0 ||
+                counts.quotationItems > 0
+            );
+        });
+
+        if (blockedProducts.length > 0) {
+            res.status(400).json({
+                message:
+                    "Cannot delete series because some products are referenced by sales, orders, purchases, or quotations. Remove related records first.",
+            });
+            return;
+        }
+
+        const productIds = products.map((product) => product.id);
+
+        if (productIds.length > 0) {
+            await prisma.$transaction(async (tx) => {
+                await tx.stockMovement.deleteMany({
+                    where: { stock: { productId: { in: productIds } } },
+                });
+                await tx.stock.deleteMany({
+                    where: { productId: { in: productIds } },
+                });
+                await tx.product.deleteMany({
+                    where: { id: { in: productIds } },
+                });
+                await tx.series.delete({ where: { id } });
+            });
+
+            res.status(204).send();
             return;
         }
 
         await prisma.series.delete({ where: { id } });
 
         res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error deleting series:", error);
+        if (error?.code === "P2025") {
+            res.status(404).json({ message: "Series not found" });
+            return;
+        }
+        if (error?.code === "P2003") {
+            res.status(400).json({ message: "Cannot delete series because it is referenced by other records." });
+            return;
+        }
         res.status(500).json({ message: "Error deleting series" });
     }
 };

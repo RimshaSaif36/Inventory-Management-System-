@@ -45,8 +45,8 @@ export default function NotificationsPage() {
     }, [storeId, showUnreadOnly]);
 
     useEffect(() => {
-        if (storeId) fetchNotifications();
-    }, [storeId, fetchNotifications]);
+        fetchNotifications();
+    }, [fetchNotifications]);
 
     const handleMarkAsRead = async (id: string) => {
         try {
@@ -59,7 +59,8 @@ export default function NotificationsPage() {
 
     const handleMarkAllRead = async () => {
         try {
-            await apiClient.put("/notifications/mark-all-read", null, { params: { storeId } });
+            const params = storeId ? { storeId } : undefined;
+            await apiClient.put("/notifications/mark-all-read", null, { params });
             fetchNotifications();
         } catch (error) {
             console.error("Error marking all as read:", error);

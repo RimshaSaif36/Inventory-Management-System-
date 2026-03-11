@@ -76,6 +76,28 @@ export const createStock = async (
       },
     });
 
+    if (stock.quantity < stock.lowStockLevel) {
+      const existingAlert = await prisma.notification.findFirst({
+        where: {
+          storeId: stock.storeId,
+          type: "SYSTEM_ALERT",
+          referenceId: stock.productId,
+          read: false,
+        },
+      });
+
+      if (!existingAlert) {
+        await prisma.notification.create({
+          data: {
+            storeId: stock.storeId,
+            type: "SYSTEM_ALERT",
+            message: `Low stock: ${stock.product?.name ?? "Product"} (${stock.quantity} left)`,
+            referenceId: stock.productId,
+          },
+        });
+      }
+    }
+
     res.status(201).json(stock);
   } catch (error: any) {
     console.error("createStock error:", error);
@@ -180,6 +202,32 @@ export const updateStock = async (
           quantity: difference,
         },
       });
+    }
+
+    const shouldNotify =
+      oldStock.quantity >= oldStock.lowStockLevel &&
+      stock.quantity < stock.lowStockLevel;
+
+    if (shouldNotify) {
+      const existingAlert = await prisma.notification.findFirst({
+        where: {
+          storeId: stock.storeId,
+          type: "SYSTEM_ALERT",
+          referenceId: stock.productId,
+          read: false,
+        },
+      });
+
+      if (!existingAlert) {
+        await prisma.notification.create({
+          data: {
+            storeId: stock.storeId,
+            type: "SYSTEM_ALERT",
+            message: `Low stock: ${stock.product?.name ?? "Product"} (${stock.quantity} left)`,
+            referenceId: stock.productId,
+          },
+        });
+      }
     }
 
     res.json(stock);

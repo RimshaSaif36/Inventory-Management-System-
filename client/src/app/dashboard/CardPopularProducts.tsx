@@ -3,9 +3,11 @@ import { ShoppingBag } from "lucide-react";
 import React from "react";
 import Rating from "../(components)/Rating";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 const CardPopularProducts = () => {
   const { data: dashboardMetrics, isLoading } = useGetDashboardMetricsQuery();
+  const router = useRouter();
 
   return (
     <div className="row-span-3 xl:row-span-6 bg-white shadow-md rounded-2xl pb-16">
@@ -40,16 +42,24 @@ const CardPopularProducts = () => {
                     <div className="font-bold text-gray-700">
                       {product.name}
                     </div>
-                    <div className="flex text-sm items-center">
-                      <span className="font-bold text-blue-500 text-xs">
-                        ${product.sellingPrice}
-                      </span>
-                    </div>
+                    {Number(product.sellingPrice) > 0 && (
+                      <div className="flex text-sm items-center">
+                        <span className="font-bold text-blue-500 text-xs">
+                          PKR {Number(product.sellingPrice).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="text-xs flex items-center">
-                  <button className="p-2 rounded-full bg-blue-100 text-blue-600 mr-2">
+                  <button
+                    className="p-2 rounded-full bg-blue-100 text-blue-600 mr-2"
+                    onClick={() =>
+                      router.push(`/products?search=${encodeURIComponent(product.name)}`)
+                    }
+                    aria-label={`View ${product.name}`}
+                  >
                     <ShoppingBag className="w-4 h-4" />
                   </button>
                 </div>

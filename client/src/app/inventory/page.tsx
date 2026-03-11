@@ -812,11 +812,11 @@ const Inventory = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Purchase Price</p>
-                  <p className="font-medium text-gray-900">${selectedProduct.purchasePrice?.toFixed(2) || "0.00"}</p>
+                  <p className="font-medium text-gray-900">PKR {selectedProduct.purchasePrice?.toFixed(2) || "0.00"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Selling Price</p>
-                  <p className="font-medium text-gray-900">${selectedProduct.sellingPrice?.toFixed(2) || "0.00"}</p>
+                  <p className="font-medium text-gray-900">PKR {selectedProduct.sellingPrice?.toFixed(2) || "0.00"}</p>
                 </div>
               </div>
 
@@ -912,6 +912,8 @@ const Inventory = () => {
                     purchasePrice: editingProduct.purchasePrice,
                     sellingPrice: editingProduct.sellingPrice,
                     totalStock: editingProduct.editQuantity !== undefined ? editingProduct.editQuantity : editingProduct.totalStock,
+                    lowStockLevel: editingProduct.lowStockLevel,
+                    storeId: storeId || undefined,
                   }
                 }).unwrap();
                 alert("Product updated successfully!");
@@ -972,7 +974,7 @@ const Inventory = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Purchase Price ($) *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Purchase Price (PKR) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -983,7 +985,7 @@ const Inventory = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Selling Price ($) *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Selling Price (PKR) *</label>
                   <input
                     type="number"
                     step="0.01"

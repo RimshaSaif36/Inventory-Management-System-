@@ -77,27 +77,109 @@ export const createSale = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { storeId, userId, customerId, items, paymentMethod } = req.body;
+    const requestWithUser = req as Request & { userId?: string; user?: { id?: string; storeId?: string } };
+    const {
+      storeId: storeIdBody,
+      userId: userIdBody,
+      customerId,
+      customerName,
+      customerPhone,
+      customerEmail,
+      items,
+      paymentMethod,
+    } = req.body;
 
-    if (!storeId || !userId || !items || !paymentMethod) {
+    const resolvedUserId = userIdBody || requestWithUser.userId || requestWithUser.user?.id;
+    let resolvedStoreId = storeIdBody || requestWithUser.user?.storeId;
+
+    if (!paymentMethod || !items) {
       res.status(400).json({ message: "Missing required fields" });
       return;
     }
 
+    if (!resolvedUserId) {
+      res.status(400).json({ message: "User is required" });
+      return;
+    }
+
+    const normalizedItems = Array.isArray(items)
+      ? items.filter((item) => item?.productId && Number(item?.quantity) > 0)
+      : [];
+
+    if (normalizedItems.length === 0) {
+      res.status(400).json({ message: "No valid items provided" });
+      return;
+    }
+
+    const normalizedName = typeof customerName === "string" ? customerName.trim() : "";
+    const normalizedPhone = typeof customerPhone === "string" ? customerPhone.trim() : "";
+    const normalizedEmail = typeof customerEmail === "string" ? customerEmail.trim() : "";
+
+    let resolvedCustomerId = typeof customerId === "string" && customerId.trim() ? customerId.trim() : null;
+
+    if (!resolvedCustomerId && (normalizedName || normalizedPhone || normalizedEmail)) {
+      let existingCustomer = null as { id: string } | null;
+
+      if (normalizedEmail) {
+        existingCustomer = await prisma.customer.findFirst({
+          where: { email: normalizedEmail },
+          select: { id: true },
+        });
+      }
+
+      if (!existingCustomer && normalizedPhone) {
+        existingCustomer = await prisma.customer.findFirst({
+          where: { phone: normalizedPhone },
+          select: { id: true },
+        });
+      }
+
+      if (existingCustomer) {
+        resolvedCustomerId = existingCustomer.id;
+      } else {
+        const createdCustomer = await prisma.customer.create({
+          data: {
+            name: normalizedName || "Walk-in",
+            phone: normalizedPhone || null,
+            email: normalizedEmail || null,
+            customerType: "POS",
+          },
+          select: { id: true },
+        });
+        resolvedCustomerId = createdCustomer.id;
+      }
+    }
+
+    if (resolvedStoreId) {
+      const store = await prisma.store.findUnique({ where: { id: resolvedStoreId } });
+      if (!store) {
+        res.status(400).json({ message: "Store not found" });
+        return;
+      }
+    } else {
+      let defaultStore = await prisma.store.findFirst({ where: { name: "Default Store" } });
+      if (!defaultStore) {
+        defaultStore = await prisma.store.create({
+          data: { name: "Default Store", location: "Main Warehouse" },
+        });
+      }
+      resolvedStoreId = defaultStore.id;
+    }
+
     let totalAmount = 0;
-    for (const item of items) {
+    for (const item of normalizedItems) {
       totalAmount += item.total || item.unitPrice * item.quantity;
     }
 
     const sale = await prisma.sale.create({
       data: {
-        storeId,
-        userId,
-        customerId: customerId || null,
+        storeId: resolvedStoreId,
+        userId: resolvedUserId,
+        customerId: resolvedCustomerId,
         totalAmount,
         paymentMethod,
         items: {
-          create: items.map((item: any) => ({
+          create: normalizedItems.map((item: any) => ({
             productId: item.productId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -112,20 +194,22 @@ export const createSale = async (
     });
 
     // Update stock for each product
-    for (const item of items) {
+    for (const item of normalizedItems) {
       const stock = await prisma.stock.findUnique({
         where: {
           storeId_productId: {
-            storeId,
+            storeId: resolvedStoreId,
             productId: item.productId,
           },
         },
+        include: { product: true },
       });
 
       if (stock) {
+        const newQuantity = stock.quantity - item.quantity;
         await prisma.stock.update({
           where: { id: stock.id },
-          data: { quantity: stock.quantity - item.quantity },
+          data: { quantity: newQuantity },
         });
 
         await prisma.stockMovement.create({
@@ -136,24 +220,51 @@ export const createSale = async (
             referenceId: sale.id,
           },
         });
+
+        const shouldNotify =
+          stock.quantity >= stock.lowStockLevel &&
+          newQuantity < stock.lowStockLevel;
+
+        if (shouldNotify) {
+          const existingAlert = await prisma.notification.findFirst({
+            where: {
+              storeId: resolvedStoreId,
+              type: "SYSTEM_ALERT",
+              referenceId: stock.productId,
+              read: false,
+            },
+          });
+
+          if (!existingAlert) {
+            await prisma.notification.create({
+              data: {
+                storeId: resolvedStoreId,
+                type: "SYSTEM_ALERT",
+                message: `Low stock: ${stock.product?.name ?? "Product"} (${newQuantity} left)`,
+                referenceId: stock.productId,
+              },
+            });
+          }
+        }
       }
     }
 
     // Auto-generate invoice
     const invoice = await prisma.invoice.create({
       data: {
-        storeId,
+        storeId: resolvedStoreId,
         saleId: sale.id,
         totalAmount,
         paymentMethod,
         invoiceNumber: `POS-${Date.now()}`,
+        status: "PAID",
       },
     });
 
     // Create admin notification for new POS invoice
     await prisma.notification.create({
       data: {
-        storeId,
+        storeId: resolvedStoreId,
         type: "NEW_POS_INVOICE",
         message: `New POS invoice created. Total: PKR ${totalAmount.toFixed(2)}`,
         referenceId: sale.id,

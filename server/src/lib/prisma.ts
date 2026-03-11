@@ -1,11 +1,12 @@
 import * as PrismaPkg from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 declare global {
   // survive hot reloads in dev
   // eslint-disable-next-line no-var
-  var prisma: any | undefined;
+  var prisma: PrismaClient | undefined;
   // eslint-disable-next-line no-var
   var pgPool: Pool | undefined;
 }
@@ -42,12 +43,12 @@ const PrismaClientCtor =
   (PrismaPkg as any);
 
 // Ensure a single PrismaClient instance
-export const prisma: any =
-  globalThis.prisma ||
+export const prisma: PrismaClient =
+  (globalThis.prisma ||
   new PrismaClientCtor({
     adapter,
     log: ["error", "warn"],
-  });
+  })) as PrismaClient;
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.prisma = prisma;

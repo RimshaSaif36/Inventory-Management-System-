@@ -73,7 +73,7 @@ export default function QuotationsPage() {
         setLoading(true);
         try {
             const response = await apiClient.get("/quotations", {
-                params: { storeId, ...(statusFilter && { status: statusFilter }) },
+                params: { ...(storeId && { storeId }), ...(statusFilter && { status: statusFilter }) },
             });
             setQuotations(response.data.data || []);
         } catch (error) {
@@ -102,11 +102,9 @@ export default function QuotationsPage() {
     }, []);
 
     useEffect(() => {
-        if (storeId) {
-            fetchQuotations();
-            fetchCustomers();
-            fetchProducts();
-        }
+        fetchQuotations();
+        fetchCustomers();
+        fetchProducts();
     }, [storeId, fetchQuotations, fetchCustomers, fetchProducts]);
 
     const resetForm = () => {
@@ -161,9 +159,14 @@ export default function QuotationsPage() {
             return;
         }
 
+        if (!user?.id) {
+            alert("User information is missing. Please log in again.");
+            return;
+        }
+
         try {
             const payload = {
-                storeId,
+                storeId: storeId || undefined,
                 userId: user?.id,
                 customerId: formCustomerId,
                 validUntil: formValidUntil || undefined,
@@ -184,9 +187,9 @@ export default function QuotationsPage() {
             setShowModal(false);
             resetForm();
             fetchQuotations();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error saving quotation:", error);
-            alert("Error saving quotation");
+            alert(error?.response?.data?.message || "Error saving quotation");
         }
     };
 

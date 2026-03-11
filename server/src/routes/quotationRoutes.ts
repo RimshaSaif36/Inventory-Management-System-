@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.get("/", authMiddleware, adminOrAccountant, quotationController.getQuotations);
 router.get("/:id", authMiddleware, adminOrAccountant, quotationController.getQuotationById);
+router.get("/:id/convert", authMiddleware, adminOrAccountant, quotationController.convertToSalesOrder);
 router.post("/", authMiddleware, adminOrAccountant, quotationController.createQuotation);
 router.put("/:id", authMiddleware, adminOrAccountant, quotationController.updateQuotation);
 router.post("/:id/convert", authMiddleware, adminOrAccountant, quotationController.convertToSalesOrder);

@@ -6,9 +6,19 @@ export const getSalesOrders = async (
   res: Response
 ): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    let storeId = req.query.storeId?.toString();
     const status = req.query.status?.toString();
     const customerId = req.query.customerId?.toString();
+
+    if (!storeId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        storeId = stores[0].id;
+      } else if (stores.length > 1) {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
 
     const orders = await prisma.salesOrder.findMany({
       where: {
@@ -45,6 +55,7 @@ export const getSalesOrderById = async (
         items: { include: { product: true } },
         customer: true,
         store: true,
+        user: { select: { id: true, name: true } },
         invoice: true,
       },
     });

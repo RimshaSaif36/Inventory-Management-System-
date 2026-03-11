@@ -34,7 +34,8 @@ export default function CustomersPage() {
       const response = await apiClient.get("/customers", {
         params: { search },
       });
-      setCustomers(response.data);
+      const data = response.data;
+      setCustomers(Array.isArray(data) ? data : data?.customers ?? data?.data ?? []);
     } catch (error) {
       console.error("Error fetching customers:", error);
     } finally {

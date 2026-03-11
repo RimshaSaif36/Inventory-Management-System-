@@ -17,7 +17,7 @@ router.post("/", accountantOnly, saleController.createSale);
 router.put("/:id", accountantOnly, saleController.updateSale);
 router.delete("/:id", accountantOnly, saleController.deleteSale);
 
-// Approval - Admin only
-router.put("/:id/approve", adminOnly, saleController.approveSale);
+// Approval - Admin or Accountant
+router.put("/:id/approve", adminOrAccountant, saleController.approveSale);
 
 export default router;

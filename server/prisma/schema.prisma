@@ -53,6 +53,8 @@ model Brand {
   id          String     @id @default(uuid())
   name        String
   description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @default(now()) @updatedAt
   categories  Category[]
   products    Product[]
 }
@@ -63,6 +65,8 @@ model Category {
   description String?
   brandId     String
   brand       Brand     @relation(fields: [brandId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
   series      Series[]
 }
 
@@ -72,6 +76,8 @@ model Series {
   description String?
   categoryId  String
   category    Category  @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
   products    Product[]
 }
 

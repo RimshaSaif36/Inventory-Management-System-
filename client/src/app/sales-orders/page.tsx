@@ -48,7 +48,8 @@ export default function SalesOrdersPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = { storeId };
+      const params: Record<string, string> = {};
+      if (storeId) params.storeId = storeId;
       if (statusFilter !== "ALL") params.status = statusFilter;
       const response = await apiClient.get("/sales-orders", { params });
       const data = response.data.data || response.data || [];
@@ -61,7 +62,7 @@ export default function SalesOrdersPage() {
   }, [storeId, statusFilter]);
 
   useEffect(() => {
-    if (storeId) fetchOrders();
+    fetchOrders();
   }, [storeId, fetchOrders]);
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
@@ -208,7 +209,7 @@ export default function SalesOrdersPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-              <div><strong>Customer:</strong> {selectedOrder.customer.name}</div>
+              <div><strong>Customer:</strong> {selectedOrder.customer?.name || "-"}</div>
               <div><strong>Status:</strong>{" "}
                 <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[selectedOrder.status]}`}>
                   {selectedOrder.status}
@@ -218,7 +219,7 @@ export default function SalesOrdersPage() {
               {selectedOrder.expectedDelivery && (
                 <div><strong>Expected Delivery:</strong> {new Date(selectedOrder.expectedDelivery).toLocaleDateString()}</div>
               )}
-              <div><strong>Created By:</strong> {selectedOrder.user.name}</div>
+              <div><strong>Created By:</strong> {selectedOrder.user?.name || "-"}</div>
               {selectedOrder.quotationId && (
                 <div><strong>From Quotation:</strong> {selectedOrder.quotationId.substring(0, 8)}</div>
               )}

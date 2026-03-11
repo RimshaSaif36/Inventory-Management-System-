@@ -6,9 +6,10 @@ import { clearUser } from "@/state/userSlice";
 import { Bell, Menu, Moon, Settings, Sun, LogOut } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { logout } from "@/lib/authService";
+import { apiClient } from "@/lib/apiClient";
 
 const Navbar = () => {
   const dispatch = useAppDispatch();
@@ -18,6 +19,14 @@ const Navbar = () => {
     (state) => state.global.isSidebarCollapsed
   );
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
+  const currentUser = useAppSelector((state) => state.user.currentUser);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const canViewNotifications =
+    currentUser?.role === "ADMIN" || currentUser?.role === "ACCOUNTANT";
+  const storeId = currentUser?.storeId;
+  const roleLabel = currentUser?.role
+    ? `${currentUser.role[0]}${currentUser.role.slice(1).toLowerCase()}`
+    : "User";
 
   const toggleSidebar = () => {
     dispatch(setIsSidebarCollapsed(!isSidebarCollapsed));
@@ -25,6 +34,32 @@ const Navbar = () => {
 
   const toggleDarkMode = () => {
     dispatch(setIsDarkMode(!isDarkMode));
+  };
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!canViewNotifications) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const params: Record<string, string> = { unreadOnly: "true", limit: "1" };
+      if (storeId) params.storeId = storeId;
+      const response = await apiClient.get("/notifications", { params });
+      const count = response.data?.unreadCount;
+      setUnreadCount(Number.isFinite(count) ? count : 0);
+    } catch (error) {
+      console.error("Failed to fetch notification count:", error);
+    }
+  }, [canViewNotifications, storeId]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
+
+  const handleOpenNotifications = () => {
+    if (canViewNotifications) {
+      router.push("/notifications");
+    }
   };
 
   const handleLogout = async () => {
@@ -76,12 +111,24 @@ const Navbar = () => {
               )}
             </button>
           </div>
-          <div className="relative">
-            <Bell className="cursor-pointer text-gray-500" size={24} />
-            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-[0.4rem] py-1 text-xs font-semibold leading-none text-red-100 bg-red-400 rounded-full">
-              3
-            </span>
-          </div>
+          {canViewNotifications && (
+            <button
+              type="button"
+              onClick={handleOpenNotifications}
+              className="relative"
+              title="Notifications"
+            >
+              <Bell
+                className={`cursor-pointer ${unreadCount > 0 ? "text-red-500" : "text-gray-500"}`}
+                size={24}
+              />
+              {unreadCount > 0 && (
+                <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-[0.4rem] py-1 text-xs font-semibold leading-none text-red-100 bg-red-400 rounded-full">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
           <hr className="w-0 h-7 border border-solid border-l border-gray-300 mx-3" />
           <div className="flex items-center gap-3 cursor-pointer">
             <Image
@@ -92,7 +139,7 @@ const Navbar = () => {
               className="rounded-full h-full object-cover"
               unoptimized
             />
-            <span className="font-semibold">Khtab</span>
+            <span className="font-semibold">{roleLabel}</span>
           </div>
           <hr className="w-0 h-7 border border-solid border-l border-gray-300 mx-3" />
           <button

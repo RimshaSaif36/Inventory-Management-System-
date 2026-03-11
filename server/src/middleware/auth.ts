@@ -57,7 +57,7 @@ export const authMiddleware = async (
     }
 
     req.userId = dbUser.id;
-    req.user = dbUser;
+    req.user = { ...dbUser, role: dbUser.role?.toUpperCase() };
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);

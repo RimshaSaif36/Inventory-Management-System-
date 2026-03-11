@@ -9,7 +9,7 @@ interface InvoiceItem {
   quantity: number;
   unitPrice: number;
   total: number;
-  product: { id: string; name: string };
+  product?: { id: string; name: string };
 }
 
 interface Invoice {
@@ -30,7 +30,7 @@ interface Invoice {
     items: InvoiceItem[];
     customer: { name: string; phone?: string; email?: string };
   };
-  store?: { name: string };
+  store?: { name: string; location?: string };
 }
 
 export default function InvoicesPage() {
@@ -44,7 +44,8 @@ export default function InvoicesPage() {
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get("/invoices", { params: { storeId } });
+      const params = storeId ? { storeId } : undefined;
+      const response = await apiClient.get("/invoices", { params });
       setInvoices(response.data);
     } catch (error) {
       console.error("Error fetching invoices:", error);
@@ -54,7 +55,7 @@ export default function InvoicesPage() {
   }, [storeId]);
 
   useEffect(() => {
-    if (storeId) fetchInvoices();
+    fetchInvoices();
   }, [storeId, fetchInvoices]);
 
   const handleViewInvoice = async (id: string) => {
@@ -66,9 +67,28 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleDownloadPDF = (invoice: Invoice) => {
-    const items = invoice.sale?.items || invoice.salesOrder?.items || [];
-    const customer = invoice.sale?.customer || invoice.salesOrder?.customer;
+  const handleDownloadPDF = async (invoice: Invoice) => {
+    let invoiceData: Invoice = invoice;
+
+    try {
+      const response = await apiClient.get(`/invoices/${invoice.id}`);
+      invoiceData = response.data || invoice;
+    } catch (error) {
+      console.error("Error fetching invoice for PDF:", error);
+    }
+
+    const items = invoiceData.sale?.items || invoiceData.salesOrder?.items || [];
+    const customer = invoiceData.sale?.customer || invoiceData.salesOrder?.customer;
+    const storeName = invoiceData.store?.name && invoiceData.store.name !== "Default Store"
+      ? invoiceData.store.name
+      : "KHTAB Engineering & Services";
+    const storeLocation = invoiceData.store?.location || "";
+    const invoiceNumber = invoiceData.invoiceNumber || invoiceData.id.substring(0, 8);
+    const invoiceDate = new Date(invoiceData.createdAt).toLocaleDateString("en-GB");
+    const subtotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const tax = 0;
+    const total = invoiceData.totalAmount || subtotal + tax;
+    const statusLabel = invoiceData.sale ? "PAID" : (invoiceData.status || "UNPAID");
 
     // Build printable content
     const printWindow = window.open("", "_blank");
@@ -76,44 +96,109 @@ export default function InvoicesPage() {
 
     printWindow.document.write(`
       <html>
-      <head><title>Invoice ${invoice.invoiceNumber || invoice.id.substring(0, 8)}</title>
+      <head><title>Invoice ${invoiceNumber}</title>
       <style>
-        body { font-family: Arial, sans-serif; padding: 40px; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f5f5f5; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .details { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .total { text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px; }
+        @page { size: A4; margin: 16mm; }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; color: #1f2937; margin: 0; }
+        .page { padding: 8mm; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+        .brand { font-weight: 700; font-size: 18px; letter-spacing: 0.5px; }
+        .brand-sub { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        .invoice-title { text-align: right; }
+        .invoice-title h1 { margin: 0; font-size: 28px; letter-spacing: 1px; }
+        .badge { display: inline-block; padding: 6px 12px; background: #2563eb; color: #fff; font-size: 11px; border-radius: 999px; margin-top: 6px; }
+        .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+        .meta-box { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; }
+        .meta-title { font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 6px; }
+        .meta-line { font-size: 12px; margin: 2px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { border-bottom: 1px solid #e5e7eb; padding: 8px 6px; font-size: 12px; }
+        th { background: #eff6ff; text-transform: uppercase; font-size: 11px; text-align: left; letter-spacing: 0.3px; color: #1f2937; }
+        tbody tr:nth-child(even) { background: #f9fafb; }
+        .text-right { text-align: right; }
+        .totals { display: flex; justify-content: flex-end; margin-top: 14px; }
+        .totals-box { width: 280px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+        .totals-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 12px; }
+        .totals-row.total { background: #2563eb; color: #fff; font-weight: 700; font-size: 14px; }
+        .footer { display: flex; justify-content: space-between; margin-top: 18px; font-size: 11px; color: #6b7280; }
+        .sign { margin-top: 28px; text-align: right; }
+        .sign-line { display: inline-block; width: 160px; border-top: 1px solid #d1d5db; margin-top: 28px; }
+        .thanks { margin-top: 18px; background: #2563eb; color: #fff; padding: 6px 12px; font-size: 11px; border-radius: 999px; display: inline-block; }
       </style>
       </head>
       <body>
-        <div class="header">
-          <h1>INVOICE</h1>
-          <p>${invoice.invoiceNumber || invoice.id.substring(0, 8)}</p>
-        </div>
-        <div class="details">
-          <div>
-            <strong>Customer:</strong> ${customer?.name || "Walk-in"}<br/>
-            ${customer?.phone ? `<strong>Phone:</strong> ${customer.phone}<br/>` : ""}
-            ${customer?.email ? `<strong>Email:</strong> ${customer.email}<br/>` : ""}
+        <div class="page">
+          <div class="header">
+            <div>
+              <div class="brand">${storeName}</div>
+              <div class="brand-sub">${storeLocation}</div>
+            </div>
+            <div class="invoice-title">
+              <h1>INVOICE</h1>
+              <div class="badge">Invoice # ${invoiceNumber}</div>
+            </div>
           </div>
-          <div>
-            <strong>Date:</strong> ${new Date(invoice.createdAt).toLocaleDateString()}<br/>
-            <strong>Payment:</strong> ${invoice.paymentMethod || "-"}<br/>
-            <strong>Status:</strong> ${invoice.status || "PAID"}
+
+          <div class="meta">
+            <div class="meta-box">
+              <div class="meta-title">Invoice To</div>
+              <div class="meta-line"><strong>${customer?.name || "Walk-in"}</strong></div>
+              ${customer?.phone ? `<div class="meta-line">Phone: ${customer.phone}</div>` : ""}
+              ${customer?.email ? `<div class="meta-line">Email: ${customer.email}</div>` : ""}
+            </div>
+            <div class="meta-box">
+              <div class="meta-title">Details</div>
+              <div class="meta-line">Date: ${invoiceDate}</div>
+              <div class="meta-line">Payment: ${invoiceData.paymentMethod || "-"}</div>
+              <div class="meta-line">Status: ${statusLabel}</div>
+            </div>
           </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40px;">SL</th>
+                <th>Item Description</th>
+                <th class="text-right">Price</th>
+                <th class="text-right">Qty</th>
+                <th class="text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map((item: InvoiceItem, i: number) => `
+                <tr>
+                  <td>${i + 1}</td>
+                  <td>${item.product?.name || "N/A"}</td>
+                  <td class="text-right">PKR ${item.unitPrice.toFixed(2)}</td>
+                  <td class="text-right">${item.quantity}</td>
+                  <td class="text-right">PKR ${item.total.toFixed(2)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="totals-box">
+              <div class="totals-row"><span>Sub Total</span><span>PKR ${subtotal.toFixed(2)}</span></div>
+              <div class="totals-row"><span>Tax</span><span>PKR ${tax.toFixed(2)}</span></div>
+              <div class="totals-row total"><span>Total</span><span>PKR ${total.toFixed(2)}</span></div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <div>
+              <div><strong>Payment Info</strong></div>
+              <div class="meta-line">Method: ${invoiceData.paymentMethod || "-"}</div>
+            </div>
+            <div class="sign">
+              <div class="sign-line"></div>
+              <div>Authorised Sign</div>
+            </div>
+          </div>
+
+          <div class="thanks">Thank you for your business</div>
         </div>
-        <table>
-          <thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
-          <tbody>
-            ${items.map((item: InvoiceItem, i: number) => `
-              <tr><td>${i + 1}</td><td>${item.product?.name || "N/A"}</td><td>${item.quantity}</td>
-              <td>PKR ${item.unitPrice.toFixed(2)}</td><td>PKR ${item.total.toFixed(2)}</td></tr>
-            `).join("")}
-          </tbody>
-        </table>
-        <div class="total">Total: PKR ${invoice.totalAmount.toFixed(2)}</div>
         <script>window.print();</script>
       </body></html>
     `);

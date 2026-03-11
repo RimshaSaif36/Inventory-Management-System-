@@ -96,7 +96,7 @@ const Brands = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Created At
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
                                     Actions
                                 </th>
                             </tr>
@@ -121,22 +121,26 @@ const Brands = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm text-gray-500">
-                                            {brand.createdAt ? new Date(brand.createdAt).toLocaleDateString() : "N/A"}
+                                            {brand.createdAt ? new Date(brand.createdAt).toLocaleString() : "N/A"}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => handleEdit(brand)}
-                                            className="text-indigo-600 hover:text-indigo-900 mr-4"
-                                        >
-                                            <EditIcon className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(brand.id)}
-                                            className="text-red-600 hover:text-red-900"
-                                        >
-                                            <TrashIcon className="w-4 h-4" />
-                                        </button>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <div className="flex items-center justify-center gap-4">
+                                            <button
+                                                onClick={() => handleEdit(brand)}
+                                                className="text-indigo-600 hover:text-indigo-900"
+                                                aria-label="Edit brand"
+                                            >
+                                                <EditIcon className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(brand.id)}
+                                                className="text-red-600 hover:text-red-900"
+                                                aria-label="Delete brand"
+                                            >
+                                                <TrashIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

@@ -92,7 +92,7 @@ export const getDashboardMetrics = async (
       where: storeId ? { storeId } : undefined,
       _sum: { amount: true },
     });
-    const expenseByCategorySummary = expenseByCategory.map((e: any, idx: number) => ({
+    const expenseByCategorySummary = expenseByCategory.map((e, idx) => ({
       expenseByCategorySummaryId: `ebc-${idx}`,
       category: e.category,
       amount: String(e._sum.amount || 0),
@@ -138,15 +138,15 @@ export const getEmployeeSalesReport = async (
     });
 
     // Get user details
-    const userIds = salesByUser.map((s: any) => s.userId);
+    const userIds = salesByUser.map((s) => s.userId);
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, name: true, email: true, role: true },
     });
 
-    const userMap = new Map(users.map((u: any) => [u.id, u]));
+    const userMap = new Map(users.map((u) => [u.id, u]));
 
-    const report = salesByUser.map((s: any) => {
+    const report = salesByUser.map((s) => {
       const user = userMap.get(s.userId);
       return {
         userId: s.userId,
@@ -159,7 +159,7 @@ export const getEmployeeSalesReport = async (
     });
 
     // Sort by total sales descending
-    report.sort((a: any, b: any) => b.totalSales - a.totalSales);
+    report.sort((a, b) => b.totalSales - a.totalSales);
 
     res.json(report);
   } catch (error) {

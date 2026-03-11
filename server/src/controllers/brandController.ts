@@ -95,22 +95,110 @@ export const deleteBrand = async (
     try {
         const { brandId } = req.params;
 
-        // Check if brand has categories
-        const categoriesCount = await prisma.category.count({
-            where: { brandId },
+        if (!brandId) {
+            res.status(400).json({ message: "Brand ID is required" });
+            return;
+        }
+
+        const brand = await prisma.brand.findUnique({
+            where: { id: brandId },
+            select: { id: true },
         });
 
-        if (categoriesCount > 0) {
+        if (!brand) {
+            res.status(404).json({ message: "Brand not found" });
+            return;
+        }
+
+        const categories = await prisma.category.findMany({
+            where: { brandId },
+            select: { id: true },
+        });
+        const categoryIds = categories.map((category) => category.id);
+
+        const series = categoryIds.length > 0
+            ? await prisma.series.findMany({
+                where: { categoryId: { in: categoryIds } },
+                select: { id: true },
+            })
+            : [];
+        const seriesIds = series.map((item) => item.id);
+
+        const products = await prisma.product.findMany({
+            where: {
+                OR: [
+                    { brandId },
+                    ...(seriesIds.length > 0 ? [{ seriesId: { in: seriesIds } }] : []),
+                ],
+            },
+            select: {
+                id: true,
+                _count: {
+                    select: {
+                        saleItems: true,
+                        orderItems: true,
+                        purchaseItems: true,
+                        quotationItems: true,
+                    },
+                },
+            },
+        });
+
+        const blockedProducts = products.filter((product) => {
+            const counts = product._count;
+            return (
+                counts.saleItems > 0 ||
+                counts.orderItems > 0 ||
+                counts.purchaseItems > 0 ||
+                counts.quotationItems > 0
+            );
+        });
+
+        if (blockedProducts.length > 0) {
             res.status(400).json({
-                message: "Cannot delete brand with existing categories. Please delete categories first."
+                message:
+                    "Cannot delete brand because some products are referenced by sales, orders, purchases, or quotations. Remove related records first.",
             });
             return;
         }
 
-        await prisma.brand.delete({ where: { id: brandId } });
+        const productIds = products.map((product) => product.id);
+
+        await prisma.$transaction(async (tx) => {
+            if (productIds.length > 0) {
+                await tx.stockMovement.deleteMany({
+                    where: { stock: { productId: { in: productIds } } },
+                });
+                await tx.stock.deleteMany({
+                    where: { productId: { in: productIds } },
+                });
+                await tx.product.deleteMany({
+                    where: { id: { in: productIds } },
+                });
+            }
+            if (seriesIds.length > 0) {
+                await tx.series.deleteMany({
+                    where: { id: { in: seriesIds } },
+                });
+            }
+            if (categoryIds.length > 0) {
+                await tx.category.deleteMany({
+                    where: { id: { in: categoryIds } },
+                });
+            }
+            await tx.brand.delete({ where: { id: brandId } });
+        });
 
         res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
+        if (error?.code === "P2025") {
+            res.status(404).json({ message: "Brand not found" });
+            return;
+        }
+        if (error?.code === "P2003") {
+            res.status(400).json({ message: "Cannot delete brand because it is referenced by other records." });
+            return;
+        }
         res.status(500).json({ message: "Error deleting brand" });
     }
 };

@@ -142,7 +142,18 @@ export const updateProduct = async (
 ): Promise<void> => {
   try {
     const { productId } = req.params;
-    const { name, brandId, seriesId, purchasePrice, sellingPrice, imageUrl } = req.body;
+    const {
+      name,
+      brandId,
+      seriesId,
+      purchasePrice,
+      sellingPrice,
+      imageUrl,
+      sku,
+      storeId,
+      totalStock,
+      lowStockLevel,
+    } = req.body;
 
     // Validate that productId exists
     if (!productId) {
@@ -153,17 +164,90 @@ export const updateProduct = async (
     // Build update data object dynamically, only including provided fields
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
+    if (sku !== undefined) updateData.sku = sku || null;
     if (brandId !== undefined) updateData.brandId = brandId || null;
     if (seriesId !== undefined) updateData.seriesId = seriesId;
     if (purchasePrice !== undefined) updateData.purchasePrice = Number(purchasePrice);
     if (sellingPrice !== undefined) updateData.sellingPrice = Number(sellingPrice);
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
 
+    const parsedTotalStock = totalStock !== undefined ? Number(totalStock) : undefined;
+    const parsedLowStockLevel = lowStockLevel !== undefined ? Number(lowStockLevel) : undefined;
+    const totalStockValue = Number.isFinite(parsedTotalStock) ? parsedTotalStock : undefined;
+    const lowStockValue = Number.isFinite(parsedLowStockLevel) ? parsedLowStockLevel : undefined;
+    const needsStockUpdate = totalStockValue !== undefined || lowStockValue !== undefined;
+
+    let stockStoreId = typeof storeId === "string" && storeId.trim() ? storeId : undefined;
+    if (needsStockUpdate) {
+      if (stockStoreId) {
+        const store = await prisma.store.findUnique({ where: { id: stockStoreId } });
+        if (!store) {
+          res.status(400).json({ message: "Store not found" });
+          return;
+        }
+      } else {
+        let defaultStore = await prisma.store.findFirst({ where: { name: "Default Store" } });
+        if (!defaultStore) {
+          defaultStore = await prisma.store.create({
+            data: { name: "Default Store", location: "Main Warehouse" },
+          });
+        }
+        stockStoreId = defaultStore.id;
+      }
+    }
+
     const product = await prisma.product.update({
       where: { id: productId },
       data: updateData,
       include: { brand: true, series: true },
     });
+
+    if (stockStoreId && needsStockUpdate) {
+      const existingStock = await prisma.stock.findUnique({
+        where: { storeId_productId: { storeId: stockStoreId, productId } },
+      });
+
+      if (existingStock) {
+        const nextQuantity = totalStockValue !== undefined ? totalStockValue : existingStock.quantity;
+        const nextLowStock = lowStockValue !== undefined ? lowStockValue : existingStock.lowStockLevel;
+        await prisma.stock.update({
+          where: { id: existingStock.id },
+          data: {
+            quantity: nextQuantity,
+            lowStockLevel: nextLowStock,
+          },
+        });
+
+        if (totalStockValue !== undefined && nextQuantity !== existingStock.quantity) {
+          await prisma.stockMovement.create({
+            data: {
+              stockId: existingStock.id,
+              type: "MANUAL_ADJUSTMENT",
+              quantity: nextQuantity - existingStock.quantity,
+            },
+          });
+        }
+      } else {
+        const createdStock = await prisma.stock.create({
+          data: {
+            storeId: stockStoreId,
+            productId,
+            quantity: totalStockValue ?? 0,
+            lowStockLevel: lowStockValue ?? 5,
+          },
+        });
+
+        if (totalStockValue !== undefined) {
+          await prisma.stockMovement.create({
+            data: {
+              stockId: createdStock.id,
+              type: "INITIAL",
+              quantity: totalStockValue,
+            },
+          });
+        }
+      }
+    }
 
     res.json(product);
   } catch (error: any) {
@@ -184,11 +268,80 @@ export const deleteProduct = async (
   try {
     const { productId } = req.params;
 
+    if (!productId) {
+      res.status(400).json({ message: "Product ID is required" });
+      return;
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            stocks: true,
+            saleItems: true,
+            orderItems: true,
+            purchaseItems: true,
+            quotationItems: true,
+          },
+        },
+      },
+    });
+
+    if (!product) {
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+
+    const {
+      stocks,
+      saleItems,
+      orderItems,
+      purchaseItems,
+      quotationItems,
+    } = product._count;
+    const blockingTotal = saleItems + orderItems + purchaseItems + quotationItems;
+
+    if (blockingTotal > 0) {
+      const reasons: string[] = [];
+      if (saleItems > 0) reasons.push("sales");
+      if (orderItems > 0) reasons.push("sales orders");
+      if (purchaseItems > 0) reasons.push("purchases");
+      if (quotationItems > 0) reasons.push("quotations");
+
+      res.status(400).json({
+        message: `Cannot delete product with existing ${reasons.join(", ")}. Remove related records first.`,
+      });
+      return;
+    }
+
+    if (stocks > 0) {
+      await prisma.$transaction(async (tx) => {
+        await tx.stockMovement.deleteMany({
+          where: { stock: { productId } },
+        });
+        await tx.stock.deleteMany({ where: { productId } });
+        await tx.product.delete({ where: { id: productId } });
+      });
+
+      res.status(204).send();
+      return;
+    }
+
     await prisma.product.delete({ where: { id: productId } });
 
     res.status(204).send();
-  } catch (error) {
+  } catch (error: any) {
     console.error("deleteProduct error:", error);
+    if (error?.code === "P2025") {
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+    if (error?.code === "P2003") {
+      res.status(400).json({ message: "Cannot delete product because it is referenced by other records." });
+      return;
+    }
     res.status(500).json({ message: "Error deleting product" });
   }
 };

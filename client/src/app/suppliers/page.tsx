@@ -31,7 +31,8 @@ export default function SuppliersPage() {
       const response = await apiClient.get("/suppliers", {
         params: { search },
       });
-      setSuppliers(response.data);
+      const data = response.data;
+      setSuppliers(Array.isArray(data) ? data : data?.suppliers ?? data?.data ?? []);
     } catch (error) {
       console.error("Error fetching suppliers:", error);
     } finally {

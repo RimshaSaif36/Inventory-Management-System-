@@ -95,7 +95,7 @@ const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-xs text-gray-500">Today&apos;s Sales</p>
-              <p className="text-xl font-bold">${overview.todaySales.toLocaleString()}</p>
+              <p className="text-xl font-bold">PKR {overview.todaySales.toLocaleString()}</p>
               <p className="text-xs text-gray-400">{overview.todayTransactions} transactions</p>
             </div>
           </div>
@@ -194,7 +194,7 @@ const AdminDashboard = () => {
                       </td>
                       <td className="p-3 text-right text-sm">{emp.transactionCount}</td>
                       <td className="p-3 text-right font-semibold text-sm">
-                        ${emp.totalSales.toLocaleString()}
+                        PKR {emp.totalSales.toLocaleString()}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center gap-2 justify-end">
@@ -272,7 +272,7 @@ const SalesmanDashboard = () => {
             <div>
               <p className="text-sm text-gray-500">My Total Sales</p>
               <p className="text-2xl font-bold">
-                ${stats?.totalSales.toLocaleString() || "0"}
+                PKR {stats?.totalSales.toLocaleString() || "0"}
               </p>
             </div>
           </div>
@@ -316,7 +316,7 @@ const SalesmanDashboard = () => {
                     <td className="p-3 text-sm">{sale.customer?.name || "Walk-in"}</td>
                     <td className="p-3 text-sm">{sale.paymentMethod}</td>
                     <td className="p-3 text-right font-semibold text-sm">
-                      ${sale.totalAmount?.toLocaleString()}
+                      PKR {sale.totalAmount?.toLocaleString()}
                     </td>
                     <td className="p-3 text-center">
                       <span

@@ -3,6 +3,7 @@
 import { useCreateProductMutation, useGetProductsQuery, useGetSeriesQuery, useDeleteProductMutation, api } from "@/state/api";
 import { PlusCircleIcon, SearchIcon, FilterIcon, EditIcon, TrashIcon } from "lucide-react";
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAppDispatch } from "@/app/redux";
 import Header from "@/app/(components)/Header";
 import Rating from "@/app/(components)/Rating";
@@ -23,8 +24,17 @@ const Products = () => {
   const [pageSize] = useState<number>(20);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
 
   const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (searchQuery && searchQuery !== searchTerm) {
+      setSearchTerm(searchQuery);
+      setPage(1);
+    }
+  }, [searchQuery, searchTerm]);
 
   const {
     data: productsResponse,
@@ -172,7 +182,7 @@ const Products = () => {
                   {product.series?.category?.brand?.name} → {product.series?.category?.name} → {product.series?.name}
                 </div>
 
-                <p className="text-gray-800">${product.sellingPrice.toFixed(2)}</p>
+                <p className="text-gray-800">PKR {product.sellingPrice.toFixed(2)}</p>
 
                 {/* Action buttons */}
                 <div className="flex space-x-2 mt-3">

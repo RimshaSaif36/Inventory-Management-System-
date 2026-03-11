@@ -29,12 +29,36 @@ export async function resetPassword(email: string) {
   });
 }
 
+const readSessionFromStorage = () => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (!key.startsWith("sb-") || !key.endsWith("-auth-token")) continue;
+
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+
+      const parsed = JSON.parse(raw);
+      const session = parsed?.currentSession || parsed?.session || parsed;
+
+      if (session?.access_token) return session;
+    }
+  } catch (_) {
+    return null;
+  }
+
+  return null;
+};
+
 export async function getSession() {
   try {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    return session;
+    return session || readSessionFromStorage();
   } catch (err) {
     // If the refresh token is missing/invalid, supabase throws an AuthApiError
     // with code 'refresh_token_not_found'. In that case, clear any stored
@@ -48,7 +72,7 @@ export async function getSession() {
       }
       return null;
     }
-    throw err;
+    return readSessionFromStorage();
   }
 }
 

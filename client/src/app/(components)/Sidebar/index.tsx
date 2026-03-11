@@ -158,7 +158,7 @@ const Sidebar = () => {
             <SidebarLink
               href="/series"
               icon={Package}
-              label="Models"
+              label="Series"
               isCollapsed={isSidebarCollapsed}
             />
           </>
@@ -262,8 +262,8 @@ const Sidebar = () => {
           />
         )}
 
-        {/* Notifications - Admin only */}
-        {isAdmin && (
+        {/* Notifications - Admin & Accountant */}
+        {(isAdmin || isAccountant) && (
           <SidebarLink
             href="/notifications"
             icon={Bell}

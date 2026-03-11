@@ -1,14 +1,25 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { AuthenticatedRequest } from "../middleware/auth";
 
 export const getQuotations = async (req: Request, res: Response): Promise<void> => {
   try {
-    const storeId = req.query.storeId?.toString();
+    let storeId = req.query.storeId?.toString();
     const customerId = req.query.customerId?.toString();
     const status = req.query.status?.toString();
     const page = parseInt(req.query.page?.toString() || "1");
     const limit = parseInt(req.query.limit?.toString() || "20");
     const skip = (page - 1) * limit;
+
+    if (!storeId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        storeId = stores[0].id;
+      } else if (stores.length > 1) {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
 
     const where: any = {
       ...(storeId && { storeId }),
@@ -66,10 +77,39 @@ export const getQuotationById = async (req: Request, res: Response): Promise<voi
 
 export const createQuotation = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { storeId, userId, customerId, items, validUntil, notes } = req.body;
+    const requestUser = req as AuthenticatedRequest;
+    const { customerId, items, validUntil, notes } = req.body;
+    const userId = requestUser.userId;
+    let resolvedStoreId = requestUser.user?.storeId || req.body.storeId;
 
-    if (!storeId || !userId || !customerId || !items?.length) {
-      res.status(400).json({ message: "storeId, userId, customerId, and items are required" });
+    if (!userId) {
+      res.status(401).json({ message: "Authenticated user is required" });
+      return;
+    }
+
+    if (resolvedStoreId) {
+      const store = await prisma.store.findUnique({ where: { id: resolvedStoreId } });
+      if (!store) {
+        res.status(400).json({ message: "Store not found" });
+        return;
+      }
+    } else {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        resolvedStoreId = stores[0].id;
+      } else if (stores.length === 0) {
+        const defaultStore = await prisma.store.create({
+          data: { name: "Default Store", location: "Main Warehouse" },
+        });
+        resolvedStoreId = defaultStore.id;
+      } else {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
+    }
+
+    if (!resolvedStoreId || !customerId || !items?.length) {
+      res.status(400).json({ message: "storeId, customerId, and items are required" });
       return;
     }
 
@@ -88,7 +128,7 @@ export const createQuotation = async (req: Request, res: Response): Promise<void
 
     const quotation = await prisma.quotation.create({
       data: {
-        storeId,
+        storeId: resolvedStoreId,
         userId,
         customerId,
         status: "DRAFT",

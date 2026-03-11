@@ -96,6 +96,7 @@ export const createInvoiceFromSale = async (
         saleId,
         totalAmount: sale.totalAmount,
         paymentMethod: sale.paymentMethod,
+        status: "PAID",
       },
       include: {
         sale: { include: { items: { include: { product: true } }, customer: true } },
@@ -211,12 +212,12 @@ export const getInvoiceSummaryReport = async (
 
     const totalInvoices = invoices.length;
     const totalAmount = invoices.reduce(
-      (sum: number, inv: { totalAmount?: number }) => sum + (inv.totalAmount ?? 0),
+      (sum: number, inv) => sum + (inv.totalAmount ?? 0),
       0
     );
 
     const paymentMethodSummary: Record<string, number> = {};
-    invoices.forEach((inv: { paymentMethod?: string; totalAmount?: number }) => {
+    invoices.forEach((inv) => {
       const method = inv.paymentMethod || "NOT_SPECIFIED";
       paymentMethodSummary[method] = (paymentMethodSummary[method] || 0) + (inv.totalAmount ?? 0);
     });

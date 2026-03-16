@@ -437,7 +437,7 @@ export default function QuotationsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                                            {quotations.map((q) => {
+                            {quotations.map((q) => {
                                 const canManage = isAccountant || isAdmin;
                                 const pendingStatus = statusUpdatingIds[q.id];
                                 const isStatusUpdating = Boolean(pendingStatus);

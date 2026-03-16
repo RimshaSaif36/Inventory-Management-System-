@@ -219,11 +219,38 @@ export const updateQuotation = async (req: Request, res: Response): Promise<void
 export const deleteQuotation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const existing = await prisma.quotation.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
 
-    await prisma.quotation.delete({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ message: "Quotation not found" });
+      return;
+    }
+
+    if (existing.status === "CONVERTED") {
+      res.status(400).json({ message: "Converted quotations cannot be deleted" });
+      return;
+    }
+
+    await prisma.$transaction([
+      prisma.quotationItem.deleteMany({ where: { quotationId: id } }),
+      prisma.quotation.delete({ where: { id } }),
+    ]);
+
     res.json({ message: "Quotation deleted successfully" });
   } catch (error) {
     console.error("deleteQuotation error:", error);
+    const err = error as { code?: string };
+    if (err?.code === "P2003") {
+      res.status(400).json({ message: "Cannot delete quotation because it is referenced by other records." });
+      return;
+    }
+    if (err?.code === "P2025") {
+      res.status(404).json({ message: "Quotation not found" });
+      return;
+    }
     res.status(500).json({ message: "Error deleting quotation" });
   }
 };

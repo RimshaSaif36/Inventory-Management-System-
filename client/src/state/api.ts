@@ -30,6 +30,7 @@ export interface Category {
   createdAt?: string;
   updatedAt?: string;
   brand?: Brand;
+  series?: Series[];
   products?: Product[];
 }
 
@@ -280,7 +281,7 @@ export const api = createApi({
         method: "POST",
         body: newCategory,
       }),
-      invalidatesTags: ["Categories"],
+      invalidatesTags: ["Categories", "Brands"],
     }),
     updateCategory: build.mutation<Category, { id: string; data: Partial<NewCategory> }>({
       query: ({ id, data }) => ({
@@ -288,14 +289,14 @@ export const api = createApi({
         method: "PUT",
         body: data,
       }),
-      invalidatesTags: ["Categories"],
+      invalidatesTags: ["Categories", "Brands"],
     }),
     deleteCategory: build.mutation<void, string>({
       query: (id) => ({
         url: `/categories/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Categories"],
+      invalidatesTags: ["Categories", "Brands"],
     }),
     // Series endpoints
     getSeries: build.query<PaginationResponse<Series>, { search?: string; categoryId?: string; page?: number; pageSize?: number } | undefined>({

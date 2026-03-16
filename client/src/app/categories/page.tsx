@@ -168,8 +168,8 @@ const Categories = () => {
                                         type="button"
                                         onClick={() => setSelectedBrandId(brand.id)}
                                         className={`rise-in w-full text-left rounded-xl border px-4 py-3 transition ${isActive
-                                                ? "border-sky-200 bg-white shadow-sm"
-                                                : "border-transparent bg-white/70 hover:border-sky-100 hover:bg-white"
+                                            ? "border-sky-200 bg-white shadow-sm"
+                                            : "border-transparent bg-white/70 hover:border-sky-100 hover:bg-white"
                                             }`}
                                         style={{ animationDelay: `${index * 40}ms` }}
                                     >

@@ -167,11 +167,10 @@ const Categories = () => {
                                         key={brand.id}
                                         type="button"
                                         onClick={() => setSelectedBrandId(brand.id)}
-                                        className={`rise-in w-full text-left rounded-xl border px-4 py-3 transition ${
-                                            isActive
+                                        className={`rise-in w-full text-left rounded-xl border px-4 py-3 transition ${isActive
                                                 ? "border-amber-200 bg-white shadow-sm"
                                                 : "border-transparent bg-white/70 hover:border-amber-100 hover:bg-white"
-                                        }`}
+                                            }`}
                                         style={{ animationDelay: `${index * 40}ms` }}
                                     >
                                         <div className="flex items-start justify-between gap-3">

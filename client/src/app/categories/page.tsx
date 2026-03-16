@@ -119,7 +119,7 @@ const Categories = () => {
                     </p>
                 </div>
                 <button
-                    className="flex items-center justify-center gap-2 rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                    className="flex items-center justify-center gap-2 rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
                     onClick={() => setIsModalOpen(true)}
                 >
                     <PlusCircleIcon className="h-5 w-5" />
@@ -128,19 +128,19 @@ const Categories = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[300px_1fr]">
-                <aside className="relative overflow-hidden rounded-2xl border border-amber-100 bg-gradient-to-b from-white via-amber-50 to-white p-5 shadow-sm">
-                    <div className="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-amber-200/60 blur-2xl" aria-hidden="true" />
+                <aside className="relative overflow-hidden rounded-2xl border border-sky-100 bg-gradient-to-b from-white via-sky-50 to-white p-5 shadow-sm">
+                    <div className="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-sky-200/60 blur-2xl" aria-hidden="true" />
                     <div className="relative space-y-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-700">
+                            <span className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-700">
                                 Brand Directory
                             </span>
-                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                            <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">
                                 {brands?.length ?? 0}
                             </span>
                         </div>
-                        <div className="flex items-center gap-2 rounded-full border border-amber-100 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
-                            <SearchIcon className="h-4 w-4 text-amber-500" />
+                        <div className="flex items-center gap-2 rounded-full border border-sky-100 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
+                            <SearchIcon className="h-4 w-4 text-sky-500" />
                             <input
                                 className="w-full bg-transparent outline-none placeholder:text-slate-400"
                                 placeholder="Search brands..."
@@ -154,7 +154,7 @@ const Categories = () => {
                                     {Array.from({ length: 4 }).map((_, index) => (
                                         <div
                                             key={`brand-skeleton-${index}`}
-                                            className="h-16 rounded-xl border border-amber-100 bg-white/70 animate-pulse"
+                                            className="h-16 rounded-xl border border-sky-100 bg-white/70 animate-pulse"
                                         />
                                     ))}
                                 </div>
@@ -168,8 +168,8 @@ const Categories = () => {
                                         type="button"
                                         onClick={() => setSelectedBrandId(brand.id)}
                                         className={`rise-in w-full text-left rounded-xl border px-4 py-3 transition ${isActive
-                                                ? "border-amber-200 bg-white shadow-sm"
-                                                : "border-transparent bg-white/70 hover:border-amber-100 hover:bg-white"
+                                                ? "border-sky-200 bg-white shadow-sm"
+                                                : "border-transparent bg-white/70 hover:border-sky-100 hover:bg-white"
                                             }`}
                                         style={{ animationDelay: `${index * 40}ms` }}
                                     >
@@ -191,7 +191,7 @@ const Categories = () => {
                                 );
                             })}
                             {!isBrandsLoading && filteredBrands.length === 0 && (
-                                <div className="rounded-xl border border-dashed border-amber-200 bg-white p-4 text-center text-xs text-slate-500">
+                                <div className="rounded-xl border border-dashed border-sky-200 bg-white p-4 text-center text-xs text-slate-500">
                                     No brands match this search.
                                 </div>
                             )}
@@ -277,7 +277,7 @@ const Categories = () => {
                             return (
                                 <div
                                     key={category.id}
-                                    className="rise-in group relative overflow-hidden rounded-2xl border border-slate-100 bg-gradient-to-br from-white via-slate-50 to-amber-50/40 p-4 shadow-sm transition hover:shadow-md"
+                                    className="rise-in group relative overflow-hidden rounded-2xl border border-slate-100 bg-gradient-to-br from-white via-slate-50 to-sky-50/50 p-4 shadow-sm transition hover:shadow-md"
                                     style={{ animationDelay: `${index * 40}ms` }}
                                 >
                                     <div className="flex items-start justify-between gap-3">
@@ -307,7 +307,7 @@ const Categories = () => {
                                         </div>
                                     </div>
                                     <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                        <span className="rounded-full bg-amber-100/70 px-2.5 py-1 text-amber-800">
+                                        <span className="rounded-full bg-sky-100/70 px-2.5 py-1 text-sky-800">
                                             {category.series?.length ?? 0} series
                                         </span>
                                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">

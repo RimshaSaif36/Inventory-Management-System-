@@ -61,6 +61,9 @@ export default function QuotationsPage() {
     const [formCustomerId, setFormCustomerId] = useState("");
     const [formValidUntil, setFormValidUntil] = useState("");
     const [formNotes, setFormNotes] = useState("");
+    const [useNewCustomer, setUseNewCustomer] = useState(false);
+    const [newCustomerName, setNewCustomerName] = useState("");
+    const [newCustomerEmail, setNewCustomerEmail] = useState("");
     const [formItems, setFormItems] = useState<QuotationItem[]>([
         { productId: "", quantity: 1, unitPrice: 0, total: 0 },
     ]);
@@ -112,6 +115,9 @@ export default function QuotationsPage() {
         setFormCustomerId("");
         setFormValidUntil("");
         setFormNotes("");
+        setUseNewCustomer(false);
+        setNewCustomerName("");
+        setNewCustomerEmail("");
         setFormItems([{ productId: "", quantity: 1, unitPrice: 0, total: 0 }]);
         setEditingId(null);
     };
@@ -155,8 +161,13 @@ export default function QuotationsPage() {
     const getTotal = () => formItems.reduce((s, i) => s + i.total, 0);
 
     const handleSubmit = async () => {
-        if (!formCustomerId || formItems.some((i) => !i.productId)) {
+        if ((!formCustomerId && !useNewCustomer) || formItems.some((i) => !i.productId)) {
             alert("Please select a customer and fill all product rows");
+            return;
+        }
+
+        if (useNewCustomer && !newCustomerName.trim()) {
+            alert("Please enter customer name");
             return;
         }
 
@@ -166,10 +177,25 @@ export default function QuotationsPage() {
         }
 
         try {
+            let customerId = formCustomerId;
+
+            if (useNewCustomer) {
+                const response = await apiClient.post("/customers", {
+                    name: newCustomerName.trim(),
+                    email: newCustomerEmail.trim() || undefined,
+                });
+
+                customerId = response.data?.id;
+                if (!customerId) {
+                    throw new Error("Customer creation failed");
+                }
+                await fetchCustomers();
+            }
+
             const payload = {
                 storeId: storeId || undefined,
                 userId: user?.id,
-                customerId: formCustomerId,
+                customerId,
                 validUntil: formValidUntil || undefined,
                 notes: formNotes || undefined,
                 items: formItems.map((i) => ({
@@ -199,6 +225,9 @@ export default function QuotationsPage() {
         setFormCustomerId(q.customer.id);
         setFormValidUntil(q.validUntil ? q.validUntil.split("T")[0] : "");
         setFormNotes(q.notes || "");
+        setUseNewCustomer(false);
+        setNewCustomerName("");
+        setNewCustomerEmail("");
         setFormItems(
             q.items.map((i) => ({
                 productId: i.productId || i.product?.id || "",
@@ -483,115 +512,174 @@ export default function QuotationsPage() {
 
             {/* Create/Edit Quotation Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[80vh] overflow-y-auto">
-                        <h2 className="text-xl font-bold mb-4">
-                            {editingId ? "Edit Quotation" : "Create New Quotation"}
-                        </h2>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                        <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-6 py-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Customer *</label>
-                                <select
-                                    value={formCustomerId}
-                                    onChange={(e) => setFormCustomerId(e.target.value)}
-                                    className="border px-3 py-2 rounded w-full"
-                                >
-                                    <option value="">Select Customer</option>
-                                    {customers.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name} {c.phone ? `(${c.phone})` : ""}
-                                        </option>
-                                    ))}
-                                </select>
+                                <h2 className="text-xl font-bold text-slate-900">
+                                    {editingId ? "Edit Quotation" : "Create New Quotation"}
+                                </h2>
+                                <p className="text-xs text-slate-500">Build the quotation, add items, then send to the customer.</p>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Valid Until</label>
-                                <input
-                                    type="date"
-                                    value={formValidUntil}
-                                    onChange={(e) => setFormValidUntil(e.target.value)}
-                                    className="border px-3 py-2 rounded w-full"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1">Notes</label>
-                            <textarea
-                                value={formNotes}
-                                onChange={(e) => setFormNotes(e.target.value)}
-                                className="border px-3 py-2 rounded w-full"
-                                rows={2}
-                            />
-                        </div>
-
-                        <h3 className="font-semibold mb-2">Items</h3>
-                        {formItems.map((item, idx) => (
-                            <div key={idx} className="flex gap-2 mb-2 items-center">
-                                <select
-                                    value={item.productId}
-                                    onChange={(e) => handleItemChange(idx, "productId", e.target.value)}
-                                    className="border px-2 py-1 rounded flex-1"
-                                >
-                                    <option value="">Select Product</option>
-                                    {products.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.name} - PKR {p.sellingPrice}
-                                        </option>
-                                    ))}
-                                </select>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={item.quantity}
-                                    onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
-                                    className="border px-2 py-1 rounded w-20"
-                                    placeholder="Qty"
-                                />
-                                <input
-                                    type="number"
-                                    value={item.unitPrice}
-                                    onChange={(e) => handleItemChange(idx, "unitPrice", e.target.value)}
-                                    className="border px-2 py-1 rounded w-28"
-                                    placeholder="Price"
-                                />
-                                <span className="w-28 text-right">PKR {item.total.toFixed(2)}</span>
-                                {formItems.length > 1 && (
-                                    <button
-                                        onClick={() => handleRemoveItem(idx)}
-                                        className="text-red-500 font-bold"
-                                    >
-                                        &times;
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-
-                        <button onClick={handleAddItem} className="text-blue-600 text-sm mb-4">
-                            + Add Item
-                        </button>
-
-                        <div className="text-right text-lg font-bold mb-4">
-                            Total: PKR {getTotal().toFixed(2)}
-                        </div>
-
-                        <div className="flex justify-end gap-2">
                             <button
                                 onClick={() => {
                                     setShowModal(false);
                                     resetForm();
                                 }}
-                                className="bg-gray-300 px-4 py-2 rounded"
+                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
                             >
-                                Cancel
+                                Close
                             </button>
-                            <button
-                                onClick={handleSubmit}
-                                className="bg-blue-600 text-white px-4 py-2 rounded"
-                            >
-                                {editingId ? "Update" : "Create"} Quotation
-                            </button>
+                        </div>
+
+                        <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-sm font-semibold text-slate-700">Customer *</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setUseNewCustomer((prev) => !prev)}
+                                            className="rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-white"
+                                        >
+                                            {useNewCustomer ? "Select Existing" : "Add New"}
+                                        </button>
+                                    </div>
+                                    <select
+                                        value={formCustomerId}
+                                        onChange={(e) => setFormCustomerId(e.target.value)}
+                                        disabled={useNewCustomer}
+                                        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-blue-400 disabled:bg-slate-100"
+                                    >
+                                        <option value="">Select Customer</option>
+                                        {customers.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.name} {c.phone ? `(${c.phone})` : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {useNewCustomer && (
+                                        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                                            <input
+                                                type="text"
+                                                value={newCustomerName}
+                                                onChange={(e) => setNewCustomerName(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                                                placeholder="Customer name"
+                                            />
+                                            <input
+                                                type="email"
+                                                value={newCustomerEmail}
+                                                onChange={(e) => setNewCustomerEmail(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                                                placeholder="Customer email (optional)"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                    <label className="block text-sm font-semibold text-slate-700">Valid Until</label>
+                                    <input
+                                        type="date"
+                                        value={formValidUntil}
+                                        onChange={(e) => setFormValidUntil(e.target.value)}
+                                        className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                                <label className="block text-sm font-semibold text-slate-700">Notes</label>
+                                <textarea
+                                    value={formNotes}
+                                    onChange={(e) => setFormNotes(e.target.value)}
+                                    className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
+                                    rows={3}
+                                    placeholder="Optional notes for the customer"
+                                />
+                            </div>
+
+                            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-semibold text-slate-700">Items</h3>
+                                    <button
+                                        onClick={handleAddItem}
+                                        className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                    >
+                                        + Add Item
+                                    </button>
+                                </div>
+                                <div className="mt-3 space-y-3">
+                                    {formItems.map((item, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="grid grid-cols-[minmax(0,1fr)_80px_120px_120px_24px] items-center gap-2"
+                                        >
+                                            <select
+                                                value={item.productId}
+                                                onChange={(e) => handleItemChange(idx, "productId", e.target.value)}
+                                                className="min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm"
+                                            >
+                                                <option value="">Select Product</option>
+                                                {products.map((p) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.name} - PKR {p.sellingPrice}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={item.quantity}
+                                                onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
+                                                className="rounded-lg border border-slate-200 px-2 py-2 text-sm text-center"
+                                                placeholder="Qty"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={item.unitPrice}
+                                                onChange={(e) => handleItemChange(idx, "unitPrice", e.target.value)}
+                                                className="rounded-lg border border-slate-200 px-2 py-2 text-sm"
+                                                placeholder="Price"
+                                            />
+                                            <span className="text-right text-sm font-semibold text-slate-700">PKR {item.total.toFixed(2)}</span>
+                                            {formItems.length > 1 ? (
+                                                <button
+                                                    onClick={() => handleRemoveItem(idx)}
+                                                    className="text-slate-400 hover:text-red-500"
+                                                >
+                                                    &times;
+                                                </button>
+                                            ) : (
+                                                <span />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="mt-5 flex flex-col items-end gap-4 border-t border-slate-200 pt-4">
+                                <div className="text-right text-lg font-bold text-slate-900">
+                                    Total: PKR {getTotal().toFixed(2)}
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setShowModal(false);
+                                            resetForm();
+                                        }}
+                                        className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSubmit}
+                                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                                    >
+                                        {editingId ? "Update" : "Create"} Quotation
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

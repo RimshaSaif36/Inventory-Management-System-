@@ -110,6 +110,29 @@ export interface NewStock {
   lowStockLevel?: number;
 }
 
+export interface StockRequest {
+  id: string;
+  storeId: string;
+  productId: string;
+  quantity: number;
+  lowStockLevel: number;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+  approvedAt?: string;
+  requestedBy?: User;
+  approvedBy?: User;
+  product?: Product;
+  store?: Store;
+}
+
+export interface NewStockRequest {
+  storeId?: string;
+  productId: string;
+  quantity: number;
+  lowStockLevel?: number;
+}
+
 export interface SalesSummary {
   salesSummaryId: string;
   totalValue: number;
@@ -198,6 +221,29 @@ const getAuthUser = (state: unknown): CurrentUserLike => {
   return getCurrentUserFromPersistedStore();
 };
 
+const getAccessTokenFromStorage = (): string | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith("sb-") || !key.endsWith("-auth-token")) continue;
+
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+
+      const parsed = JSON.parse(raw);
+      const session = parsed?.currentSession || parsed?.session || parsed;
+
+      if (session?.access_token) return session.access_token as string;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
 export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl:
@@ -206,6 +252,11 @@ export const api = createApi({
       "http://localhost:5000",
     prepareHeaders: (headers, { getState }) => {
       const currentUser = getAuthUser(getState());
+      const accessToken = getAccessTokenFromStorage();
+
+      if (accessToken) {
+        headers.set("Authorization", `Bearer ${accessToken}`);
+      }
 
       if (currentUser?.id) {
         headers.set("user-id", currentUser.id);
@@ -219,7 +270,7 @@ export const api = createApi({
     },
   }),
   reducerPath: "api",
-  tagTypes: ["DashboardMetrics", "Products", "Users", "Expenses", "Brands", "Categories", "Series", "Stock"],
+  tagTypes: ["DashboardMetrics", "Products", "Users", "Expenses", "Brands", "Categories", "Series", "Stock", "StockRequests"],
   endpoints: (build) => ({
     getDashboardMetrics: build.query<DashboardMetrics, string | undefined>({
       query: (storeId) => ({
@@ -396,6 +447,35 @@ export const api = createApi({
       }),
       invalidatesTags: ["Stock"],
     }),
+    getStockRequests: build.query<StockRequest[], { status?: string; storeId?: string } | void>({
+      query: (params) => ({
+        url: "/stock/requests",
+        params: params || undefined,
+      }),
+      providesTags: ["StockRequests"],
+    }),
+    createStockRequest: build.mutation<StockRequest, NewStockRequest>({
+      query: (newRequest) => ({
+        url: "/stock/requests",
+        method: "POST",
+        body: newRequest,
+      }),
+      invalidatesTags: ["StockRequests"],
+    }),
+    approveStockRequest: build.mutation<StockRequest, { id: string }>({
+      query: ({ id }) => ({
+        url: `/stock/requests/${id}/approve`,
+        method: "PUT",
+      }),
+      invalidatesTags: ["StockRequests", "Stock", "Products"],
+    }),
+    rejectStockRequest: build.mutation<StockRequest, { id: string }>({
+      query: ({ id }) => ({
+        url: `/stock/requests/${id}/reject`,
+        method: "PUT",
+      }),
+      invalidatesTags: ["StockRequests"],
+    }),
     // Existing endpoints
     getUsers: build.query<User[], void>({
       query: () => "/users",
@@ -447,6 +527,10 @@ export const {
   useGetStockByIdQuery,
   useCreateStockMutation,
   useUpdateStockMutation,
+  useGetStockRequestsQuery,
+  useCreateStockRequestMutation,
+  useApproveStockRequestMutation,
+  useRejectStockRequestMutation,
   // User hooks
   useGetUsersQuery,
   useCreateUserMutation,

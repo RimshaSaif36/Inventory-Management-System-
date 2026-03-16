@@ -7,6 +7,10 @@ import {
   useGetStockByStoreQuery,
   useCreateStockMutation,
   useUpdateStockMutation,
+  useGetStockRequestsQuery,
+  useCreateStockRequestMutation,
+  useApproveStockRequestMutation,
+  useRejectStockRequestMutation,
   useGetBrandsQuery,
   useGetSeriesQuery
 } from "@/state/api";
@@ -27,6 +31,9 @@ const Inventory = () => {
 
   // Stock Management States
   const user = useAppSelector((state) => state.user.currentUser);
+  const role = user?.role;
+  const isAdmin = role === "ADMIN";
+  const isAccountant = role === "ACCOUNTANT";
   const storeId = user?.storeId || "";
   const { data: stocksData, refetch: refetchStocks } = useGetStockByStoreQuery(
     { storeId, search: "" },
@@ -34,6 +41,18 @@ const Inventory = () => {
   );
   const [createStock] = useCreateStockMutation();
   const [updateStock] = useUpdateStockMutation();
+  const [createStockRequest] = useCreateStockRequestMutation();
+  const [approveStockRequest, { isLoading: isApprovingRequest }] = useApproveStockRequestMutation();
+  const [rejectStockRequest, { isLoading: isRejectingRequest }] = useRejectStockRequestMutation();
+  const {
+    data: stockRequests,
+    isLoading: isRequestsLoading,
+    isUninitialized: isRequestsUninitialized,
+    refetch: refetchRequests,
+  } = useGetStockRequestsQuery(
+    { status: "PENDING", ...(storeId ? { storeId } : {}) },
+    { skip: !storeId || (!isAdmin && !isAccountant) }
+  );
   const [stocks, setStocks] = useState<any[]>([]);
   const [showStockForm, setShowStockForm] = useState(false);
   const [editingStockId, setEditingStockId] = useState<string | null>(null);
@@ -329,13 +348,21 @@ const Inventory = () => {
       if (typeof refetch === "function") refetch();
       // Only attempt to refetch stocks when a storeId is available
       if (storeId && typeof refetchStocks === "function") refetchStocks();
+      if ((isAdmin || isAccountant) && !isRequestsUninitialized && typeof refetchRequests === "function") {
+        refetchRequests();
+      }
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [refetch, refetchStocks, storeId]);
+  }, [refetch, refetchStocks, refetchRequests, storeId, isAdmin, isAccountant, isRequestsUninitialized]);
 
   const handleAddStock = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isAdmin && !isAccountant) {
+      alert("You do not have permission to manage stock");
+      return;
+    }
 
     if (!stockFormData.productId || stockFormData.quantity < 0) {
       alert("Please select a product and enter a valid quantity");
@@ -343,28 +370,42 @@ const Inventory = () => {
     }
 
     try {
-      if (editingStockId) {
-        await updateStock({
-          id: editingStockId,
-          data: {
+      if (isAdmin) {
+        if (editingStockId) {
+          await updateStock({
+            id: editingStockId,
+            data: {
+              quantity: stockFormData.quantity,
+              lowStockLevel: stockFormData.lowStockLevel,
+            },
+          }).unwrap();
+          alert("Stock updated successfully!");
+          setEditingStockId(null);
+        } else {
+          await createStock({
+            productId: stockFormData.productId,
             quantity: stockFormData.quantity,
             lowStockLevel: stockFormData.lowStockLevel,
-          },
-        }).unwrap();
-        alert("Stock updated successfully!");
-        setEditingStockId(null);
+          }).unwrap();
+          alert("Stock added successfully!");
+        }
       } else {
-        await createStock({
+        await createStockRequest({
           productId: stockFormData.productId,
           quantity: stockFormData.quantity,
           lowStockLevel: stockFormData.lowStockLevel,
+          ...(storeId ? { storeId } : {}),
         }).unwrap();
-        alert("Stock added successfully!");
+        alert("Stock request submitted for admin approval!");
+        setEditingStockId(null);
+        if (!isRequestsUninitialized && typeof refetchRequests === "function") refetchRequests();
       }
 
       setStockFormData({ productId: "", quantity: 0, lowStockLevel: 5 });
       setShowStockForm(false);
-      refetchStocks();
+      if (isAdmin) {
+        refetchStocks();
+      }
     } catch (error: any) {
       alert(error?.data?.message || "Error saving stock");
     }
@@ -384,6 +425,28 @@ const Inventory = () => {
     setShowStockForm(false);
     setEditingStockId(null);
     setStockFormData({ productId: "", quantity: 0, lowStockLevel: 5 });
+  };
+
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      await approveStockRequest({ id: requestId }).unwrap();
+      alert("Stock request approved!");
+      if (!isRequestsUninitialized && typeof refetchRequests === "function") refetchRequests();
+      if (typeof refetchStocks === "function") refetchStocks();
+      if (typeof refetch === "function") refetch();
+    } catch (error: any) {
+      alert(error?.data?.message || "Error approving request");
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    try {
+      await rejectStockRequest({ id: requestId }).unwrap();
+      alert("Stock request rejected!");
+      if (!isRequestsUninitialized && typeof refetchRequests === "function") refetchRequests();
+    } catch (error: any) {
+      alert(error?.data?.message || "Error rejecting request");
+    }
   };
 
   const handleDelete = async () => {
@@ -408,6 +471,7 @@ const Inventory = () => {
   const filteredStocks = showLowStockOnly
     ? stocks.filter((s) => s.quantity < s.lowStockLevel)
     : stocks;
+  const pendingRequests = stockRequests || [];
 
   if (isLoading) {
     return (
@@ -657,18 +721,120 @@ const Inventory = () => {
                 onClick={() => setShowStockForm(!showStockForm)}
                 className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:shadow-lg font-bold transition whitespace-nowrap"
               >
-                {showStockForm ? "✕ Cancel" : "+ Add Stock"}
+                {showStockForm ? "✕ Cancel" : isAdmin ? "+ Add Stock" : "+ Request Stock"}
               </button>
             </div>
           </div>
+
+          {(isAdmin || isAccountant) && (
+            <div className="mb-6 bg-white p-5 rounded-2xl shadow-md border border-slate-200">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Pending Stock Requests</h3>
+                  <p className="text-xs text-gray-500">
+                    {isAdmin
+                      ? "Review and approve accountant stock requests."
+                      : "Your submitted requests are waiting for admin approval."}
+                  </p>
+                </div>
+                <span className="rounded-full bg-blue-100 text-blue-700 px-3 py-1 text-xs font-semibold">
+                  {pendingRequests.length} pending
+                </span>
+              </div>
+
+              {isRequestsLoading ? (
+                <div className="mt-4 space-y-2">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={`request-skeleton-${index}`}
+                      className="h-12 rounded-xl bg-slate-100 animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : pendingRequests.length === 0 ? (
+                <div className="mt-4 text-sm text-gray-500">No pending requests.</div>
+              ) : (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-widest text-gray-400">
+                        <th className="py-2 pr-4">Product</th>
+                        <th className="py-2 pr-4">Quantity</th>
+                        <th className="py-2 pr-4">Low Level</th>
+                        {isAdmin && <th className="py-2 pr-4">Requested By</th>}
+                        <th className="py-2 pr-4">Requested At</th>
+                        <th className="py-2 pr-4">Status</th>
+                        {isAdmin && <th className="py-2 text-right">Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-700">
+                      {pendingRequests.map((request) => (
+                        <tr key={request.id} className="border-t border-gray-100">
+                          <td className="py-3 pr-4 font-semibold text-gray-900">
+                            {request.product?.name || "Product"}
+                          </td>
+                          <td className="py-3 pr-4">{request.quantity}</td>
+                          <td className="py-3 pr-4">{request.lowStockLevel}</td>
+                          {isAdmin && (
+                            <td className="py-3 pr-4">
+                              {request.requestedBy?.name || request.requestedBy?.email || "-"}
+                            </td>
+                          )}
+                          <td className="py-3 pr-4">
+                            {request.createdAt ? new Date(request.createdAt).toLocaleString() : "-"}
+                          </td>
+                          <td className="py-3 pr-4">
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                              Pending
+                            </span>
+                          </td>
+                          {isAdmin && (
+                            <td className="py-3 text-right">
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => handleApproveRequest(request.id)}
+                                  disabled={isApprovingRequest || isRejectingRequest}
+                                  className="px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-60"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleRejectRequest(request.id)}
+                                  disabled={isApprovingRequest || isRejectingRequest}
+                                  className="px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Add/Edit Stock Form */}
           {showStockForm && (
             <div className="mb-6 bg-white p-6 rounded-2xl shadow-md border-2 border-blue-500">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
                 <span className="text-2xl">📝</span>
-                {editingStockId ? "Edit Stock Allocation" : "Add New Stock"}
+                {editingStockId
+                  ? isAdmin
+                    ? "Edit Stock Allocation"
+                    : "Request Stock Update"
+                  : isAdmin
+                    ? "Add New Stock"
+                    : "Request New Stock"}
               </h2>
+              {!isAdmin && (
+                <p className="text-xs text-gray-500 mb-6">
+                  Requests require admin approval before stock is updated.
+                </p>
+              )}
               <form onSubmit={handleAddStock} className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   <div>
@@ -715,7 +881,13 @@ const Inventory = () => {
                     type="submit"
                     className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition"
                   >
-                    {editingStockId ? "Update Stock" : "Add Stock"}
+                    {editingStockId
+                      ? isAdmin
+                        ? "Update Stock"
+                        : "Submit Update Request"
+                      : isAdmin
+                        ? "Add Stock"
+                        : "Submit Request"}
                   </button>
                   <button
                     type="button"

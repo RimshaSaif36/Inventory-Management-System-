@@ -1,6 +1,6 @@
 import express from "express";
 import * as stockController from "../controllers/stockController";
-import { authMiddleware, accountantOnly, adminOrAccountant } from "../middleware/auth";
+import { authMiddleware, accountantOnly, adminOnly, adminOrAccountant } from "../middleware/auth";
 
 const router = express.Router();
 
@@ -12,10 +12,14 @@ router.get("/", adminOrAccountant, stockController.getStockByStore);
 router.get("/report/all", adminOrAccountant, stockController.getStockReport);
 router.get("/report/low", adminOrAccountant, stockController.getLowStockProducts);
 router.get("/movement/history", adminOrAccountant, stockController.getStockMovementHistory);
+router.get("/requests", adminOrAccountant, stockController.getStockRequests);
+router.post("/requests", accountantOnly, stockController.createStockRequest);
+router.put("/requests/:id/approve", adminOnly, stockController.approveStockRequest);
+router.put("/requests/:id/reject", adminOnly, stockController.rejectStockRequest);
 router.get("/:id", adminOrAccountant, stockController.getStockById);
 
-// WRITE operations - Accountant only
-router.post("/", accountantOnly, stockController.createStock);
-router.put("/:id", accountantOnly, stockController.updateStock);
+// WRITE operations - Admin only
+router.post("/", adminOnly, stockController.createStock);
+router.put("/:id", adminOnly, stockController.updateStock);
 
 export default router;

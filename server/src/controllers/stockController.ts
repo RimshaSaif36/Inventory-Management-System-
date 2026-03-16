@@ -1,5 +1,23 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { AuthenticatedRequest } from "../middleware/auth";
+
+const getOrCreateDefaultStore = async () => {
+  let defaultStore = await prisma.store.findFirst({
+    where: { name: "Default Store" },
+  });
+
+  if (!defaultStore) {
+    defaultStore = await prisma.store.create({
+      data: {
+        name: "Default Store",
+        location: "Main Warehouse",
+      },
+    });
+  }
+
+  return defaultStore;
+};
 
 export const createStock = async (
   req: Request,
@@ -25,18 +43,7 @@ export const createStock = async (
     }
 
     // Get or create default store
-    let defaultStore = await prisma.store.findFirst({
-      where: { name: "Default Store" },
-    });
-
-    if (!defaultStore) {
-      defaultStore = await prisma.store.create({
-        data: {
-          name: "Default Store",
-          location: "Main Warehouse",
-        },
-      });
-    }
+    const defaultStore = await getOrCreateDefaultStore();
 
     // Check if stock already exists for this product
     const existingStock = await prisma.stock.findUnique({
@@ -102,6 +109,294 @@ export const createStock = async (
   } catch (error: any) {
     console.error("createStock error:", error);
     res.status(500).json({ message: error.message || "Error creating stock" });
+  }
+};
+
+export const createStockRequest = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { productId, quantity, lowStockLevel, storeId } = req.body;
+    const requesterId = req.user?.id;
+
+    if (!requesterId) {
+      res.status(401).json({ message: "Authentication required" });
+      return;
+    }
+
+    const parsedQuantity = Number(quantity);
+    if (!productId || !Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
+      res.status(400).json({ message: "Product ID and valid quantity are required" });
+      return;
+    }
+
+    const parsedLowStock = Number.isFinite(Number(lowStockLevel)) ? Number(lowStockLevel) : 5;
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+
+    if (!product) {
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+
+    let targetStoreId = typeof storeId === "string" && storeId.trim() ? storeId : req.user?.storeId;
+
+    if (targetStoreId) {
+      const store = await prisma.store.findUnique({ where: { id: targetStoreId } });
+      if (!store) {
+        res.status(400).json({ message: "Store not found" });
+        return;
+      }
+    } else {
+      const defaultStore = await getOrCreateDefaultStore();
+      targetStoreId = defaultStore.id;
+    }
+
+    const existingRequest = await prisma.stockRequest.findFirst({
+      where: {
+        storeId: targetStoreId,
+        productId,
+        status: "PENDING",
+      },
+    });
+
+    if (existingRequest) {
+      res.status(409).json({ message: "A pending request already exists for this product" });
+      return;
+    }
+
+    const stockRequest = await prisma.stockRequest.create({
+      data: {
+        storeId: targetStoreId,
+        productId,
+        quantity: parsedQuantity,
+        lowStockLevel: parsedLowStock,
+        requestedById: requesterId,
+        status: "PENDING",
+      },
+      include: {
+        store: true,
+        product: { include: { brand: true, series: true } },
+        requestedBy: { select: { id: true, name: true, email: true, role: true } },
+        approvedBy: { select: { id: true, name: true, email: true, role: true } },
+      },
+    });
+
+    res.status(201).json(stockRequest);
+  } catch (error: any) {
+    console.error("createStockRequest error:", error);
+    res.status(500).json({ message: error.message || "Error creating stock request" });
+  }
+};
+
+export const getStockRequests = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const status = req.query.status?.toString()?.toUpperCase();
+    const storeId = req.query.storeId?.toString();
+
+    const whereClause: any = {
+      status: status || "PENDING",
+      ...(storeId && { storeId }),
+    };
+
+    if (req.user?.role !== "ADMIN") {
+      whereClause.requestedById = req.user?.id;
+    }
+
+    const requests = await prisma.stockRequest.findMany({
+      where: whereClause,
+      include: {
+        store: true,
+        product: { include: { brand: true, series: true } },
+        requestedBy: { select: { id: true, name: true, email: true, role: true } },
+        approvedBy: { select: { id: true, name: true, email: true, role: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json(requests);
+  } catch (error: any) {
+    console.error("getStockRequests error:", error);
+    res.status(500).json({ message: error.message || "Error retrieving stock requests" });
+  }
+};
+
+export const approveStockRequest = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const approverId = req.user?.id;
+
+    if (!approverId) {
+      res.status(401).json({ message: "Authentication required" });
+      return;
+    }
+
+    const request = await prisma.stockRequest.findUnique({
+      where: { id },
+    });
+
+    if (!request) {
+      res.status(404).json({ message: "Stock request not found" });
+      return;
+    }
+
+    if (request.status !== "PENDING") {
+      res.status(400).json({ message: "Only pending requests can be approved" });
+      return;
+    }
+
+    const approvedRequest = await prisma.$transaction(async (tx) => {
+      const existingStock = await tx.stock.findUnique({
+        where: {
+          storeId_productId: {
+            storeId: request.storeId,
+            productId: request.productId,
+          },
+        },
+      });
+
+      let stock = null;
+
+      if (existingStock) {
+        stock = await tx.stock.update({
+          where: { id: existingStock.id },
+          data: {
+            quantity: request.quantity,
+            lowStockLevel: request.lowStockLevel,
+          },
+          include: { product: true, store: true },
+        });
+
+        if (request.quantity !== existingStock.quantity) {
+          await tx.stockMovement.create({
+            data: {
+              stockId: existingStock.id,
+              type: "APPROVED_ADJUSTMENT",
+              quantity: request.quantity - existingStock.quantity,
+            },
+          });
+        }
+      } else {
+        stock = await tx.stock.create({
+          data: {
+            storeId: request.storeId,
+            productId: request.productId,
+            quantity: request.quantity,
+            lowStockLevel: request.lowStockLevel,
+          },
+          include: { product: true, store: true },
+        });
+
+        await tx.stockMovement.create({
+          data: {
+            stockId: stock.id,
+            type: "APPROVED_INITIAL",
+            quantity: request.quantity,
+          },
+        });
+      }
+
+      if (stock && stock.quantity < stock.lowStockLevel) {
+        const existingAlert = await tx.notification.findFirst({
+          where: {
+            storeId: stock.storeId,
+            type: "SYSTEM_ALERT",
+            referenceId: stock.productId,
+            read: false,
+          },
+        });
+
+        if (!existingAlert) {
+          await tx.notification.create({
+            data: {
+              storeId: stock.storeId,
+              type: "SYSTEM_ALERT",
+              message: `Low stock: ${stock.product?.name ?? "Product"} (${stock.quantity} left)`,
+              referenceId: stock.productId,
+            },
+          });
+        }
+      }
+
+      return tx.stockRequest.update({
+        where: { id },
+        data: {
+          status: "APPROVED",
+          approvedById: approverId,
+          approvedAt: new Date(),
+        },
+        include: {
+          store: true,
+          product: { include: { brand: true, series: true } },
+          requestedBy: { select: { id: true, name: true, email: true, role: true } },
+          approvedBy: { select: { id: true, name: true, email: true, role: true } },
+        },
+      });
+    });
+
+    res.json(approvedRequest);
+  } catch (error: any) {
+    console.error("approveStockRequest error:", error);
+    res.status(500).json({ message: error.message || "Error approving stock request" });
+  }
+};
+
+export const rejectStockRequest = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const approverId = req.user?.id;
+
+    if (!approverId) {
+      res.status(401).json({ message: "Authentication required" });
+      return;
+    }
+
+    const request = await prisma.stockRequest.findUnique({
+      where: { id },
+    });
+
+    if (!request) {
+      res.status(404).json({ message: "Stock request not found" });
+      return;
+    }
+
+    if (request.status !== "PENDING") {
+      res.status(400).json({ message: "Only pending requests can be rejected" });
+      return;
+    }
+
+    const rejectedRequest = await prisma.stockRequest.update({
+      where: { id },
+      data: {
+        status: "REJECTED",
+        approvedById: approverId,
+        approvedAt: new Date(),
+      },
+      include: {
+        store: true,
+        product: { include: { brand: true, series: true } },
+        requestedBy: { select: { id: true, name: true, email: true, role: true } },
+        approvedBy: { select: { id: true, name: true, email: true, role: true } },
+      },
+    });
+
+    res.json(rejectedRequest);
+  } catch (error: any) {
+    console.error("rejectStockRequest error:", error);
+    res.status(500).json({ message: error.message || "Error rejecting stock request" });
   }
 };
 

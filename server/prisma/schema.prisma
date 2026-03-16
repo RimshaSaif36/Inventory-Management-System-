@@ -21,6 +21,8 @@ model User {
   sales       Sale[]
   salesOrders SalesOrder[]
   quotations  Quotation[]
+  stockRequests StockRequest[] @relation("StockRequestRequestedBy")
+  stockApprovals StockRequest[] @relation("StockRequestApprovedBy")
 
   createdAt DateTime @default(now())
 }
@@ -42,6 +44,7 @@ model Store {
   quotations  Quotation[]
   expenses    Expense[]
   notifications Notification[]
+  stockRequests StockRequest[]
   createdAt   DateTime     @default(now())
 }
 
@@ -95,6 +98,7 @@ model Product {
   series Series?  @relation(fields: [seriesId], references: [id])
 
   stocks        Stock[]
+  stockRequests StockRequest[]
   saleItems     SaleItem[]
   orderItems    SalesOrderItem[]
   purchaseItems PurchaseItem[]
@@ -138,6 +142,28 @@ model StockMovement {
   createdAt   DateTime @default(now())
 
   stock Stock @relation(fields: [stockId], references: [id])
+}
+
+model StockRequest {
+  id           String   @id @default(uuid())
+  storeId      String
+  productId    String
+  requestedById String
+  approvedById String?
+  status       String   @default("PENDING")
+  quantity     Int
+  lowStockLevel Int     @default(5)
+  approvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  store       Store   @relation(fields: [storeId], references: [id])
+  product     Product @relation(fields: [productId], references: [id])
+  requestedBy User    @relation("StockRequestRequestedBy", fields: [requestedById], references: [id])
+  approvedBy  User?   @relation("StockRequestApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([storeId, status])
+  @@index([productId, status])
 }
 
 //////////////////////////////////////////////////////

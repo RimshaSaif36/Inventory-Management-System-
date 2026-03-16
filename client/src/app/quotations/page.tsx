@@ -56,6 +56,7 @@ export default function QuotationsPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
     const [statusFilter, setStatusFilter] = useState("");
+    const [statusUpdatingIds, setStatusUpdatingIds] = useState<Record<string, string>>({});
 
     // Form state
     const [formCustomerId, setFormCustomerId] = useState("");
@@ -240,11 +241,29 @@ export default function QuotationsPage() {
     };
 
     const handleStatusChange = async (id: string, newStatus: string) => {
+        if (statusUpdatingIds[id]) return;
+
+        const previousStatus = quotations.find((q) => q.id === id)?.status;
+        setStatusUpdatingIds((prev) => ({ ...prev, [id]: newStatus }));
+        setQuotations((prev) =>
+            prev.map((q) => (q.id === id ? { ...q, status: newStatus } : q))
+        );
+
         try {
             await apiClient.put(`/quotations/${id}`, { status: newStatus });
-            fetchQuotations();
         } catch (error) {
             console.error("Error updating status:", error);
+            if (previousStatus) {
+                setQuotations((prev) =>
+                    prev.map((q) => (q.id === id ? { ...q, status: previousStatus } : q))
+                );
+            }
+        } finally {
+            setStatusUpdatingIds((prev) => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
         }
     };
 
@@ -410,6 +429,8 @@ export default function QuotationsPage() {
                             {quotations.map((q) => {
                                 const isConverted = q.status === "CONVERTED";
                                 const canManage = isAccountant || isAdmin;
+                                const pendingStatus = statusUpdatingIds[q.id];
+                                const isStatusUpdating = Boolean(pendingStatus);
 
                                 return (
                                     <tr key={q.id}>
@@ -440,7 +461,7 @@ export default function QuotationsPage() {
                                                 <>
                                                     <button
                                                         onClick={() => handleEdit(q)}
-                                                        disabled={isConverted}
+                                                        disabled={isConverted || isStatusUpdating}
                                                         title={isConverted ? "Converted quotations cannot be edited" : "Edit quotation"}
                                                         className={`px-2 py-1 rounded text-xs ${isConverted
                                                             ? "bg-yellow-200 text-yellow-800 cursor-not-allowed"
@@ -451,7 +472,7 @@ export default function QuotationsPage() {
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(q.id)}
-                                                        disabled={isConverted}
+                                                        disabled={isConverted || isStatusUpdating}
                                                         title={isConverted ? "Converted quotations cannot be deleted" : "Delete quotation"}
                                                         className={`px-2 py-1 rounded text-xs ${isConverted
                                                             ? "bg-red-200 text-red-800 cursor-not-allowed"
@@ -465,24 +486,27 @@ export default function QuotationsPage() {
                                             {isAccountant && q.status === "DRAFT" && (
                                                 <button
                                                     onClick={() => handleStatusChange(q.id, "SENT")}
-                                                    className="bg-indigo-600 text-white px-2 py-1 rounded text-xs"
+                                                    disabled={isStatusUpdating}
+                                                    className="bg-indigo-600 text-white px-2 py-1 rounded text-xs disabled:opacity-60"
                                                 >
-                                                    Send
+                                                    {pendingStatus === "SENT" ? "Sending..." : "Send"}
                                                 </button>
                                             )}
                                             {isAccountant && q.status === "SENT" && (
                                                 <>
                                                     <button
                                                         onClick={() => handleStatusChange(q.id, "ACCEPTED")}
-                                                        className="bg-green-700 text-white px-2 py-1 rounded text-xs"
+                                                        disabled={isStatusUpdating}
+                                                        className="bg-green-700 text-white px-2 py-1 rounded text-xs disabled:opacity-60"
                                                     >
-                                                        Accept
+                                                        {pendingStatus === "ACCEPTED" ? "Accepting..." : "Accept"}
                                                     </button>
                                                     <button
                                                         onClick={() => handleStatusChange(q.id, "REJECTED")}
-                                                        className="bg-red-600 text-white px-2 py-1 rounded text-xs"
+                                                        disabled={isStatusUpdating}
+                                                        className="bg-red-600 text-white px-2 py-1 rounded text-xs disabled:opacity-60"
                                                     >
-                                                        Reject
+                                                        {pendingStatus === "REJECTED" ? "Rejecting..." : "Reject"}
                                                     </button>
                                                 </>
                                             )}

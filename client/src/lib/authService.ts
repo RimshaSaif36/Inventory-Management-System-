@@ -19,7 +19,12 @@ export async function signUpAccountant(email: string, password: string, name?: s
 }
 
 export async function logout() {
-  return supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut({ scope: "local" });
+  } catch (_) {
+    // ignore sign-out network errors
+  }
+  return null;
 }
 
 export async function resetPassword(email: string) {
@@ -66,7 +71,7 @@ export async function getSession() {
     const e: any = err;
     if (e?.name === "AuthApiError" && e?.code === "refresh_token_not_found") {
       try {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: "local" });
       } catch (_) {
         // ignore signOut errors
       }

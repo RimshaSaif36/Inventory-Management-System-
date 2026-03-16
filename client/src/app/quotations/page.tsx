@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import axios from "axios";
 import { useAppSelector } from "@/app/redux";
 import { apiClient } from "@/lib/apiClient";
 
@@ -284,6 +285,16 @@ export default function QuotationsPage() {
             await apiClient.delete(`/quotations/${id}`);
             fetchQuotations();
         } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 404) {
+                fetchQuotations();
+                return;
+            }
+            let message = "Error deleting quotation";
+            if (axios.isAxiosError(error)) {
+                const data: any = error.response?.data;
+                message = data?.message || data?.error || message;
+            }
+            alert(message);
             console.error("Error deleting quotation:", error);
         }
     };
@@ -426,8 +437,7 @@ export default function QuotationsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {quotations.map((q) => {
-                                const isConverted = q.status === "CONVERTED";
+                                            {quotations.map((q) => {
                                 const canManage = isAccountant || isAdmin;
                                 const pendingStatus = statusUpdatingIds[q.id];
                                 const isStatusUpdating = Boolean(pendingStatus);
@@ -461,23 +471,17 @@ export default function QuotationsPage() {
                                                 <>
                                                     <button
                                                         onClick={() => handleEdit(q)}
-                                                        disabled={isConverted || isStatusUpdating}
-                                                        title={isConverted ? "Converted quotations cannot be edited" : "Edit quotation"}
-                                                        className={`px-2 py-1 rounded text-xs ${isConverted
-                                                            ? "bg-yellow-200 text-yellow-800 cursor-not-allowed"
-                                                            : "bg-yellow-500 text-white hover:bg-yellow-600"
-                                                            }`}
+                                                        disabled={isStatusUpdating}
+                                                        title="Edit quotation"
+                                                        className="px-2 py-1 rounded text-xs bg-yellow-500 text-white hover:bg-yellow-600"
                                                     >
                                                         Edit
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(q.id)}
-                                                        disabled={isConverted || isStatusUpdating}
-                                                        title={isConverted ? "Converted quotations cannot be deleted" : "Delete quotation"}
-                                                        className={`px-2 py-1 rounded text-xs ${isConverted
-                                                            ? "bg-red-200 text-red-800 cursor-not-allowed"
-                                                            : "bg-red-500 text-white hover:bg-red-600"
-                                                            }`}
+                                                        disabled={isStatusUpdating}
+                                                        title="Delete quotation"
+                                                        className="px-2 py-1 rounded text-xs bg-red-500 text-white hover:bg-red-600"
                                                     >
                                                         Delete
                                                     </button>

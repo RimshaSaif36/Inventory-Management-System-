@@ -27,6 +27,13 @@ export const getDashboardMetrics = async (
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    const formatDateKey = (value: Date) => {
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
     const recentSales = await prisma.sale.findMany({
       where: {
         createdAt: { gte: thirtyDaysAgo },
@@ -36,11 +43,25 @@ export const getDashboardMetrics = async (
       orderBy: { createdAt: "asc" },
     });
 
+    const recentSalesOrders = await prisma.salesOrder.findMany({
+      where: {
+        orderDate: { gte: thirtyDaysAgo },
+        status: { in: ["DELIVERED", "COMPLETED", "INVOICED"] },
+        ...(storeId && { storeId }),
+      },
+      select: { totalAmount: true, orderDate: true },
+      orderBy: { orderDate: "asc" },
+    });
+
     // Group sales by date
     const salesByDate: Record<string, number> = {};
     for (const sale of recentSales) {
-      const dateKey = sale.createdAt.toISOString().split("T")[0];
+      const dateKey = formatDateKey(sale.createdAt);
       salesByDate[dateKey] = (salesByDate[dateKey] || 0) + sale.totalAmount;
+    }
+    for (const order of recentSalesOrders) {
+      const dateKey = formatDateKey(order.orderDate);
+      salesByDate[dateKey] = (salesByDate[dateKey] || 0) + order.totalAmount;
     }
     const salesDates = Object.keys(salesByDate).sort();
     const salesSummary = salesDates.map((date, idx) => ({
@@ -67,7 +88,7 @@ export const getDashboardMetrics = async (
 
     const purchasesByDate: Record<string, number> = {};
     for (const p of recentPurchases) {
-      const dateKey = p.createdAt.toISOString().split("T")[0];
+      const dateKey = formatDateKey(p.createdAt);
       purchasesByDate[dateKey] = (purchasesByDate[dateKey] || 0) + p.totalCost;
     }
     const purchaseDates = Object.keys(purchasesByDate).sort();

@@ -58,7 +58,7 @@ const SidebarLink = ({
     : "text-gray-500 dark:text-slate-300";
 
   return (
-    <Link href={href}>
+    <Link href={href} prefetch={false}>
       <div
         className={`cursor-pointer flex items-center ${baseClasses} ${hoverClasses} ${activeClasses} gap-3 transition-colors`}
       >

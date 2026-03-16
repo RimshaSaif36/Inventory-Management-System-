@@ -169,11 +169,6 @@ export const updateQuotation = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    if (existing.status === "CONVERTED") {
-      res.status(400).json({ message: "Cannot edit a converted quotation" });
-      return;
-    }
-
     let updateData: any = {
       ...(status && { status }),
       ...(validUntil && { validUntil: new Date(validUntil) }),
@@ -229,15 +224,15 @@ export const deleteQuotation = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    if (existing.status === "CONVERTED") {
-      res.status(400).json({ message: "Converted quotations cannot be deleted" });
-      return;
-    }
+    await prisma.$transaction(async (tx) => {
+      await tx.salesOrder.updateMany({
+        where: { quotationId: id },
+        data: { quotationId: null },
+      });
 
-    await prisma.$transaction([
-      prisma.quotationItem.deleteMany({ where: { quotationId: id } }),
-      prisma.quotation.delete({ where: { id } }),
-    ]);
+      await tx.quotationItem.deleteMany({ where: { quotationId: id } });
+      await tx.quotation.delete({ where: { id } });
+    });
 
     res.json({ message: "Quotation deleted successfully" });
   } catch (error) {

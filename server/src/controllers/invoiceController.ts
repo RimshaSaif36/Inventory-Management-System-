@@ -166,6 +166,61 @@ export const createInvoiceFromSalesOrder = async (
   }
 };
 
+export const updateInvoice = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { invoiceNumber, paymentMethod, status } = req.body;
+
+    const updateData: Record<string, any> = {};
+
+    if (invoiceNumber !== undefined) {
+      const normalized = typeof invoiceNumber === "string"
+        ? invoiceNumber.trim()
+        : String(invoiceNumber).trim();
+      updateData.invoiceNumber = normalized ? normalized : null;
+    }
+
+    if (paymentMethod !== undefined) {
+      const normalized = typeof paymentMethod === "string"
+        ? paymentMethod.trim()
+        : String(paymentMethod).trim();
+      updateData.paymentMethod = normalized ? normalized : null;
+    }
+
+    if (status !== undefined) {
+      const normalized = String(status).toUpperCase();
+      const allowed = ["UNPAID", "PAID", "PARTIAL"];
+      if (!allowed.includes(normalized)) {
+        res.status(400).json({ message: "Invalid status" });
+        return;
+      }
+      updateData.status = normalized;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      res.status(400).json({ message: "No fields to update" });
+      return;
+    }
+
+    const updated = await prisma.invoice.update({
+      where: { id },
+      data: updateData,
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("updateInvoice error:", error);
+    if (error?.code === "P2025") {
+      res.status(404).json({ message: "Invoice not found" });
+      return;
+    }
+    res.status(500).json({ message: "Error updating invoice" });
+  }
+};
+
 export const deleteInvoice = async (
   req: Request,
   res: Response
@@ -178,8 +233,12 @@ export const deleteInvoice = async (
     });
 
     res.json({ message: "Invoice deleted successfully" });
-  } catch (error) {
+  } catch (error: any) {
     console.error("deleteInvoice error:", error);
+    if (error?.code === "P2025") {
+      res.status(404).json({ message: "Invoice not found" });
+      return;
+    }
     res.status(500).json({ message: "Error deleting invoice" });
   }
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import axios from "axios";
 import { useAppSelector } from "@/app/redux";
 import { apiClient } from "@/lib/apiClient";
 
@@ -37,9 +38,14 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
+  const [editPaymentMethod, setEditPaymentMethod] = useState("");
+  const [editStatus, setEditStatus] = useState("UNPAID");
 
   const user = useAppSelector((state) => state.user.currentUser);
   const storeId = user?.storeId || "";
+  const canManage = user?.role === "ACCOUNTANT" || user?.role === "ADMIN";
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -64,6 +70,58 @@ export default function InvoicesPage() {
       setSelectedInvoice(response.data);
     } catch (error) {
       console.error("Error fetching invoice:", error);
+    }
+  };
+
+  const openEditModal = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setEditInvoiceNumber(invoice.invoiceNumber || "");
+    setEditPaymentMethod(invoice.paymentMethod || "");
+    setEditStatus(invoice.status || (invoice.sale ? "PAID" : "UNPAID"));
+  };
+
+  const closeEditModal = () => {
+    setEditingInvoice(null);
+  };
+
+  const handleUpdateInvoice = async () => {
+    if (!editingInvoice) return;
+    try {
+      await apiClient.put(`/invoices/${editingInvoice.id}`, {
+        invoiceNumber: editInvoiceNumber.trim() || null,
+        paymentMethod: editPaymentMethod.trim() || null,
+        status: editStatus,
+      });
+      setEditingInvoice(null);
+      fetchInvoices();
+    } catch (error) {
+      let message = "Error updating invoice";
+      if (axios.isAxiosError(error)) {
+        const data: any = error.response?.data;
+        message = data?.message || data?.error || message;
+      }
+      alert(message);
+      console.error("Error updating invoice:", error);
+    }
+  };
+
+  const handleDeleteInvoice = async (id: string) => {
+    if (!confirm("Delete this invoice?")) return;
+    try {
+      await apiClient.delete(`/invoices/${id}`);
+      fetchInvoices();
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        fetchInvoices();
+        return;
+      }
+      let message = "Error deleting invoice";
+      if (axios.isAxiosError(error)) {
+        const data: any = error.response?.data;
+        message = data?.message || data?.error || message;
+      }
+      alert(message);
+      console.error("Error deleting invoice:", error);
     }
   };
 
@@ -259,6 +317,22 @@ export default function InvoicesPage() {
                     >
                       PDF
                     </button>
+                    {canManage && (
+                      <>
+                        <button
+                          onClick={() => openEditModal(invoice)}
+                          className="bg-yellow-500 text-white px-2 py-1 rounded text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteInvoice(invoice.id)}
+                          className="bg-red-500 text-white px-2 py-1 rounded text-sm"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -346,6 +420,72 @@ export default function InvoicesPage() {
                 className="bg-gray-300 px-4 py-2 rounded"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingInvoice && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">
+                Edit Invoice {editingInvoice.invoiceNumber || editingInvoice.id.substring(0, 8)}
+              </h2>
+              <button
+                onClick={closeEditModal}
+                className="text-gray-500 hover:text-gray-800 text-lg"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Invoice Number</label>
+                <input
+                  type="text"
+                  value={editInvoiceNumber}
+                  onChange={(e) => setEditInvoiceNumber(e.target.value)}
+                  className="w-full border px-3 py-2 rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Payment Method</label>
+                <input
+                  type="text"
+                  value={editPaymentMethod}
+                  onChange={(e) => setEditPaymentMethod(e.target.value)}
+                  className="w-full border px-3 py-2 rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full border px-3 py-2 rounded"
+                >
+                  <option value="UNPAID">Unpaid</option>
+                  <option value="PARTIAL">Partial</option>
+                  <option value="PAID">Paid</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={closeEditModal}
+                className="bg-gray-300 px-4 py-2 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateInvoice}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Save
               </button>
             </div>
           </div>

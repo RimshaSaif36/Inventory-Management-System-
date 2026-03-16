@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import { useAppSelector } from "@/app/redux";
 import { apiClient } from "@/lib/apiClient";
 
@@ -79,6 +80,16 @@ export default function CustomersPage() {
         await apiClient.delete(`/customers/${id}`);
         fetchCustomers();
       } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          fetchCustomers();
+          return;
+        }
+        let message = "Error deleting customer";
+        if (axios.isAxiosError(error)) {
+          const data: any = error.response?.data;
+          message = data?.message || data?.error || message;
+        }
+        alert(message);
         console.error("Error deleting customer:", error);
       }
     }

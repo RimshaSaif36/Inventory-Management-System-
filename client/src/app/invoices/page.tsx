@@ -34,6 +34,30 @@ interface Invoice {
   store?: { name: string; location?: string };
 }
 
+const PAYMENT_METHOD_OPTIONS = [
+  "Cash",
+  "Cheque",
+  "Bank Transfer",
+  "Mobile Wallet",
+];
+
+const normalizePaymentMethod = (method?: string) => {
+  if (!method) return "";
+  const normalized = method.trim();
+  const lower = normalized.toLowerCase();
+
+  if (lower === "cash") return "Cash";
+  if (lower === "cheque" || lower === "check") return "Cheque";
+  if (lower === "bank transfer" || lower === "transfer" || lower === "bank_transfer") {
+    return "Bank Transfer";
+  }
+  if (lower === "mobile wallet" || lower === "wallet" || lower === "mobile_wallet") {
+    return "Mobile Wallet";
+  }
+
+  return normalized;
+};
+
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,7 +100,7 @@ export default function InvoicesPage() {
   const openEditModal = (invoice: Invoice) => {
     setEditingInvoice(invoice);
     setEditInvoiceNumber(invoice.invoiceNumber || "");
-    setEditPaymentMethod(invoice.paymentMethod || "");
+    setEditPaymentMethod(normalizePaymentMethod(invoice.paymentMethod));
     setEditStatus(invoice.status || (invoice.sale ? "PAID" : "UNPAID"));
   };
 
@@ -453,12 +477,21 @@ export default function InvoicesPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Payment Method</label>
-                <input
-                  type="text"
+                <select
                   value={editPaymentMethod}
                   onChange={(e) => setEditPaymentMethod(e.target.value)}
                   className="w-full border px-3 py-2 rounded"
-                />
+                >
+                  <option value="">Select payment method</option>
+                  {(PAYMENT_METHOD_OPTIONS.includes(editPaymentMethod) || !editPaymentMethod
+                    ? PAYMENT_METHOD_OPTIONS
+                    : [editPaymentMethod, ...PAYMENT_METHOD_OPTIONS]
+                  ).map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Status</label>

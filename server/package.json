@@ -8,7 +8,7 @@
     "seed": "ts-node prisma/seed.ts",
     "build": "rimraf dist && npx tsc",
     "start": "npm run build && node dist/index.js",
-    "predev": "node ./scripts/ensurePortFree.js",
+    "predev": "node ./scripts/ensurePortFree.js && npx prisma generate",
     "dev": "nodemon src/index.ts"
   },
   "prisma": {

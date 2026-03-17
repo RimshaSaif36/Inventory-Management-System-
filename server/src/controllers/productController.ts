@@ -1,6 +1,16 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 
+const DEFAULT_LOW_STOCK_LEVEL = 5;
+
+const normalizeLowStockLevel = (value: unknown): number => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_LOW_STOCK_LEVEL;
+  }
+  return Math.floor(parsed);
+};
+
 export const getProducts = async (
   req: Request,
   res: Response
@@ -66,13 +76,13 @@ export const getProducts = async (
     stockGroups.forEach((g: any) => {
       stockMap[g.productId] = {
         totalStock: g._sum.quantity || 0,
-        lowStockLevel: g._min.lowStockLevel || 0,
+        lowStockLevel: normalizeLowStockLevel(g._min.lowStockLevel),
       };
     });
     const products = productsData.map((product: any) => ({
       ...product,
       totalStock: stockMap[product.id]?.totalStock || 0,
-      lowStockLevel: stockMap[product.id]?.lowStockLevel || 0,
+      lowStockLevel: stockMap[product.id]?.lowStockLevel || DEFAULT_LOW_STOCK_LEVEL,
     }));
 
     res.json({ data: products, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
@@ -174,7 +184,9 @@ export const updateProduct = async (
     const parsedTotalStock = totalStock !== undefined ? Number(totalStock) : undefined;
     const parsedLowStockLevel = lowStockLevel !== undefined ? Number(lowStockLevel) : undefined;
     const totalStockValue = Number.isFinite(parsedTotalStock) ? parsedTotalStock : undefined;
-    const lowStockValue = Number.isFinite(parsedLowStockLevel) ? parsedLowStockLevel : undefined;
+    const lowStockValue = Number.isFinite(parsedLowStockLevel)
+      ? normalizeLowStockLevel(parsedLowStockLevel)
+      : undefined;
     const needsStockUpdate = totalStockValue !== undefined || lowStockValue !== undefined;
 
     let stockStoreId = typeof storeId === "string" && storeId.trim() ? storeId : undefined;
@@ -209,7 +221,10 @@ export const updateProduct = async (
 
       if (existingStock) {
         const nextQuantity = totalStockValue !== undefined ? totalStockValue : existingStock.quantity;
-        const nextLowStock = lowStockValue !== undefined ? lowStockValue : existingStock.lowStockLevel;
+        const nextLowStock =
+          lowStockValue !== undefined
+            ? lowStockValue
+            : normalizeLowStockLevel(existingStock.lowStockLevel);
         await prisma.stock.update({
           where: { id: existingStock.id },
           data: {
@@ -233,7 +248,7 @@ export const updateProduct = async (
             storeId: stockStoreId,
             productId,
             quantity: totalStockValue ?? 0,
-            lowStockLevel: lowStockValue ?? 5,
+            lowStockLevel: lowStockValue ?? DEFAULT_LOW_STOCK_LEVEL,
           },
         });
 

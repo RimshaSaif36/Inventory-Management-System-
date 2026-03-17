@@ -12,10 +12,33 @@ export const getInvoices = async (
       where: {
         ...(storeId && { storeId }),
       },
-      include: {
-        sale: { include: { items: true, customer: true } },
-        salesOrder: { include: { items: true, customer: true } },
-        store: true,
+      select: {
+        id: true,
+        invoiceNumber: true,
+        totalAmount: true,
+        paymentMethod: true,
+        status: true,
+        createdAt: true,
+        sale: {
+          select: {
+            id: true,
+            customer: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        salesOrder: {
+          select: {
+            id: true,
+            customer: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });

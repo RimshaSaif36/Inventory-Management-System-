@@ -124,6 +124,18 @@ export default function QuotationsPage() {
         setEditingId(null);
     };
 
+    const handleToggleCustomerMode = () => {
+        const nextUseNewCustomer = !useNewCustomer;
+        setUseNewCustomer(nextUseNewCustomer);
+
+        if (nextUseNewCustomer) {
+            setFormCustomerId("");
+        }
+
+        setNewCustomerName("");
+        setNewCustomerEmail("");
+    };
+
     const handleAddItem = () => {
         setFormItems([...formItems, { productId: "", quantity: 1, unitPrice: 0, total: 0 }]);
     };
@@ -567,31 +579,32 @@ export default function QuotationsPage() {
                                         <label className="block text-sm font-semibold text-slate-700">Customer *</label>
                                         <button
                                             type="button"
-                                            onClick={() => setUseNewCustomer((prev) => !prev)}
+                                            onClick={handleToggleCustomerMode}
                                             className="rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:bg-white"
                                         >
                                             {useNewCustomer ? "Select Existing" : "Add New"}
                                         </button>
                                     </div>
-                                    <select
-                                        value={formCustomerId}
-                                        onChange={(e) => setFormCustomerId(e.target.value)}
-                                        disabled={useNewCustomer}
-                                        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-blue-400 disabled:bg-slate-100"
-                                    >
-                                        <option value="">Select Customer</option>
-                                        {customers.map((c) => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.name} {c.phone ? `(${c.phone})` : ""}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {useNewCustomer && (
-                                        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                                    {!useNewCustomer ? (
+                                        <select
+                                            value={formCustomerId}
+                                            onChange={(e) => setFormCustomerId(e.target.value)}
+                                            className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-blue-400"
+                                        >
+                                            <option value="">Select Customer</option>
+                                            {customers.map((c) => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.name} {c.phone ? `(${c.phone})` : ""}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
                                             <input
                                                 type="text"
                                                 value={newCustomerName}
                                                 onChange={(e) => setNewCustomerName(e.target.value)}
+                                                autoComplete="off"
                                                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
                                                 placeholder="Customer name"
                                             />
@@ -599,6 +612,9 @@ export default function QuotationsPage() {
                                                 type="email"
                                                 value={newCustomerEmail}
                                                 onChange={(e) => setNewCustomerEmail(e.target.value)}
+                                                autoComplete="off"
+                                                autoCapitalize="none"
+                                                spellCheck={false}
                                                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
                                                 placeholder="Customer email (optional)"
                                             />

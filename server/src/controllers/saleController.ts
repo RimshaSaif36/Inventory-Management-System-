@@ -82,6 +82,57 @@ export const getSaleById = async (
   }
 };
 
+const LOW_STOCK_RECIPIENT_ROLES = ["ADMIN", "ACCOUNTANT"] as const;
+const DEFAULT_LOW_STOCK_LEVEL = 5;
+
+const normalizeLowStockLevel = (value: unknown): number => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_LOW_STOCK_LEVEL;
+  }
+  return Math.floor(parsed);
+};
+
+const createLowStockNotifications = async (
+  {
+    storeId,
+    productId,
+    productName,
+    quantity,
+  }: {
+    storeId: string;
+    productId: string;
+    productName?: string | null;
+    quantity: number;
+  }
+) => {
+  const message = `Low stock: ${productName ?? "Product"} (${quantity} left)`;
+
+  for (const role of LOW_STOCK_RECIPIENT_ROLES) {
+    const existingAlert = await prisma.notification.findFirst({
+      where: {
+        storeId,
+        type: "SYSTEM_ALERT",
+        referenceId: productId,
+        read: false,
+        recipientRole: role,
+      },
+    });
+
+    if (!existingAlert) {
+      await prisma.notification.create({
+        data: {
+          storeId,
+          type: "SYSTEM_ALERT",
+          message,
+          referenceId: productId,
+          recipientRole: role,
+        },
+      });
+    }
+  }
+};
+
 export const createSale = async (
   req: Request,
   res: Response
@@ -231,30 +282,18 @@ export const createSale = async (
           },
         });
 
+        const effectiveLowStockLevel = normalizeLowStockLevel(stock.lowStockLevel);
         const shouldNotify =
-          stock.quantity >= stock.lowStockLevel &&
-          newQuantity < stock.lowStockLevel;
+          stock.quantity >= effectiveLowStockLevel &&
+          newQuantity < effectiveLowStockLevel;
 
         if (shouldNotify) {
-          const existingAlert = await prisma.notification.findFirst({
-            where: {
-              storeId: resolvedStoreId,
-              type: "SYSTEM_ALERT",
-              referenceId: stock.productId,
-              read: false,
-            },
+          await createLowStockNotifications({
+            storeId: resolvedStoreId,
+            productId: stock.productId,
+            productName: stock.product?.name,
+            quantity: newQuantity,
           });
-
-          if (!existingAlert) {
-            await prisma.notification.create({
-              data: {
-                storeId: resolvedStoreId,
-                type: "SYSTEM_ALERT",
-                message: `Low stock: ${stock.product?.name ?? "Product"} (${newQuantity} left)`,
-                referenceId: stock.productId,
-              },
-            });
-          }
         }
       }
     }

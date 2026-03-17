@@ -2,6 +2,16 @@ import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { AuthenticatedRequest } from "../middleware/auth";
 
+const DEFAULT_LOW_STOCK_LEVEL = 5;
+
+const normalizeLowStockLevel = (value: unknown): number => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_LOW_STOCK_LEVEL;
+  }
+  return Math.floor(parsed);
+};
+
 const resolveStoreId = async (
   req: Request,
   res: Response
@@ -370,7 +380,7 @@ export const getDashboardOverview = async (
 
     for (const stock of stocks) {
       totalStockValue += stock.quantity * stock.product.purchasePrice;
-      if (stock.quantity < stock.lowStockLevel) {
+      if (stock.quantity < normalizeLowStockLevel(stock.lowStockLevel)) {
         lowStockCount++;
       }
     }

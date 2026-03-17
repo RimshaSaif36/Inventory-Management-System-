@@ -36,8 +36,7 @@ const Inventory = () => {
   const isAccountant = role === "ACCOUNTANT";
   const storeId = user?.storeId || "";
   const { data: stocksData, refetch: refetchStocks } = useGetStockByStoreQuery(
-    { storeId, search: "" },
-    { skip: !storeId }
+    { ...(storeId ? { storeId } : {}), search: "" }
   );
   const [createStock] = useCreateStockMutation();
   const [updateStock] = useUpdateStockMutation();
@@ -51,7 +50,7 @@ const Inventory = () => {
     refetch: refetchRequests,
   } = useGetStockRequestsQuery(
     { status: "PENDING", ...(storeId ? { storeId } : {}) },
-    { skip: !storeId || (!isAdmin && !isAccountant) }
+    { skip: !isAdmin && !isAccountant }
   );
   const [stocks, setStocks] = useState<any[]>([]);
   const [showStockForm, setShowStockForm] = useState(false);
@@ -346,8 +345,7 @@ const Inventory = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (typeof refetch === "function") refetch();
-      // Only attempt to refetch stocks when a storeId is available
-      if (storeId && typeof refetchStocks === "function") refetchStocks();
+      if (typeof refetchStocks === "function") refetchStocks();
       if ((isAdmin || isAccountant) && !isRequestsUninitialized && typeof refetchRequests === "function") {
         refetchRequests();
       }
@@ -472,6 +470,16 @@ const Inventory = () => {
     ? stocks.filter((s) => s.quantity < s.lowStockLevel)
     : stocks;
   const pendingRequests = stockRequests || [];
+  const productRows = productsData?.data || [];
+  const stockSummarySource = stocks.length > 0
+    ? stocks
+    : productRows.map((product: any) => ({
+      quantity: Number(product.totalStock || 0),
+      lowStockLevel: Number(product.lowStockLevel || 5),
+    }));
+  const totalInStockCount = stockSummarySource.filter((s: any) => s.quantity > 0).length;
+  const lowStockCount = stockSummarySource.filter((s: any) => s.quantity < s.lowStockLevel).length;
+  const totalQuantity = stockSummarySource.reduce((sum: number, s: any) => sum + Number(s.quantity || 0), 0);
 
   if (isLoading) {
     return (
@@ -663,7 +671,7 @@ const Inventory = () => {
                 </div>
               </div>
               <div className="mt-4">
-                <p className="text-4xl font-bold text-gray-900">{stocks.length}</p>
+                <p className="text-4xl font-bold text-gray-900">{totalInStockCount}</p>
                 <p className="text-xs text-gray-500 mt-2">Products allocated</p>
               </div>
             </div>
@@ -676,7 +684,7 @@ const Inventory = () => {
               </div>
               <div className="mt-4">
                 <p className="text-4xl font-bold text-amber-600">
-                  {stocks.filter((s) => s.quantity < s.lowStockLevel).length}
+                  {lowStockCount}
                 </p>
                 <p className="text-xs text-gray-500 mt-2">Below threshold</p>
               </div>
@@ -690,7 +698,7 @@ const Inventory = () => {
               </div>
               <div className="mt-4">
                 <p className="text-4xl font-bold text-green-600">
-                  {stocks.reduce((sum, s) => sum + s.quantity, 0)}
+                  {totalQuantity}
                 </p>
                 <p className="text-xs text-gray-500 mt-2">Units available</p>
               </div>

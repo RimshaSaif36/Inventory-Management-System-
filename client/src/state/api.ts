@@ -420,10 +420,10 @@ export const api = createApi({
       invalidatesTags: ["Products"],
     }),
     // Stock endpoints
-    getStockByStore: build.query<Stock[], { storeId: string; search?: string }>({
+    getStockByStore: build.query<Stock[], { storeId?: string; search?: string } | undefined>({
       query: (params) => ({
         url: "/stock",
-        params,
+        params: params || undefined,
       }),
       providesTags: ["Stock"],
     }),

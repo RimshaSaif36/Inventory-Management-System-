@@ -399,9 +399,12 @@ model Notification {
   type      String   // NEW_POS_INVOICE | NEW_ORDER | SALE_ACTIVITY | SYSTEM_ALERT
   message   String
   read      Boolean  @default(false)
+  recipientRole String? // ADMIN | ACCOUNTANT | null => visible to all allowed roles
   referenceId String?
   createdAt DateTime @default(now())
 
   store Store @relation(fields: [storeId], references: [id])
+
+  @@index([storeId, recipientRole, read])
 }
 

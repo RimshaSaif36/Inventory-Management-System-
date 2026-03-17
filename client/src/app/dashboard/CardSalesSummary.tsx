@@ -16,7 +16,7 @@ const CardSalesSummary = () => {
   const { data, isLoading, isError } = useGetDashboardMetricsQuery(storeId || undefined);
   const salesData = data?.salesSummary || [];
 
-  const [timeframe, setTimeframe] = useState("weekly");
+  const [timeframe, setTimeframe] = useState("daily");
 
   const sortedData = [...salesData].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()

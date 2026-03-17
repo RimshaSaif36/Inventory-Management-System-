@@ -1,7 +1,23 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { AuthenticatedRequest } from "../middleware/auth";
+import { Prisma } from "@prisma/client";
 
-export const getNotifications = async (req: Request, res: Response): Promise<void> => {
+const getRoleScopedWhere = (role?: string): Prisma.NotificationWhereInput => {
+  const normalizedRole = role?.toUpperCase();
+  if (!normalizedRole) {
+    return { recipientRole: null };
+  }
+
+  return {
+    OR: [
+      { recipientRole: null } as Prisma.NotificationWhereInput,
+      { recipientRole: normalizedRole } as Prisma.NotificationWhereInput,
+    ],
+  };
+};
+
+export const getNotifications = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const storeId = req.query.storeId?.toString();
     const unreadOnly = req.query.unreadOnly === "true";
@@ -18,14 +34,18 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
       }
     }
 
-    const where: any = {
+    const roleScopedWhere = getRoleScopedWhere(req.user?.role);
+
+    const where: Prisma.NotificationWhereInput = {
       ...(resolvedStoreId && { storeId: resolvedStoreId }),
       ...(unreadOnly && { read: false }),
+      ...roleScopedWhere,
     };
 
-    const unreadWhere: any = {
+    const unreadWhere: Prisma.NotificationWhereInput = {
       ...(resolvedStoreId && { storeId: resolvedStoreId }),
       read: false,
+      ...roleScopedWhere,
     };
 
     if (summaryOnly) {
@@ -52,28 +72,49 @@ export const getNotifications = async (req: Request, res: Response): Promise<voi
   }
 };
 
-export const markAsRead = async (req: Request, res: Response): Promise<void> => {
+export const markAsRead = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
-    const notification = await prisma.notification.update({
-      where: { id },
+    const roleScopedWhere = getRoleScopedWhere(req.user?.role);
+    const where: Prisma.NotificationWhereInput = {
+      AND: [{ id }, roleScopedWhere],
+    };
+
+    const result = await prisma.notification.updateMany({
+      where,
       data: { read: true },
     });
 
-    res.json(notification);
+    if (result.count === 0) {
+      res.status(404).json({ message: "Notification not found" });
+      return;
+    }
+
+    res.json({ message: "Notification marked as read" });
   } catch (error) {
     console.error("markAsRead error:", error);
     res.status(500).json({ message: "Error marking notification as read" });
   }
 };
 
-export const markAllAsRead = async (req: Request, res: Response): Promise<void> => {
+export const markAllAsRead = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const storeId = req.query.storeId?.toString();
 
+    const roleScopedWhere = getRoleScopedWhere(req.user?.role);
+    const where: Prisma.NotificationWhereInput = {
+      AND: [
+        {
+          ...(storeId && { storeId }),
+          read: false,
+        },
+        roleScopedWhere,
+      ],
+    };
+
     await prisma.notification.updateMany({
-      where: { ...(storeId && { storeId }), read: false },
+      where,
       data: { read: true },
     });
 
@@ -84,10 +125,22 @@ export const markAllAsRead = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-export const deleteNotification = async (req: Request, res: Response): Promise<void> => {
+export const deleteNotification = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    await prisma.notification.delete({ where: { id } });
+
+    const roleScopedWhere = getRoleScopedWhere(req.user?.role);
+    const where: Prisma.NotificationWhereInput = {
+      AND: [{ id }, roleScopedWhere],
+    };
+
+    const result = await prisma.notification.deleteMany({ where });
+
+    if (result.count === 0) {
+      res.status(404).json({ message: "Notification not found" });
+      return;
+    }
+
     res.json({ message: "Notification deleted" });
   } catch (error) {
     console.error("deleteNotification error:", error);

@@ -19,12 +19,65 @@ const getOrCreateDefaultStore = async () => {
   return defaultStore;
 };
 
+const LOW_STOCK_RECIPIENT_ROLES = ["ADMIN", "ACCOUNTANT"] as const;
+const DEFAULT_LOW_STOCK_LEVEL = 5;
+
+const normalizeLowStockLevel = (value: unknown): number => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_LOW_STOCK_LEVEL;
+  }
+  return Math.floor(parsed);
+};
+
+const createLowStockNotifications = async (
+  dbClient: any,
+  {
+    storeId,
+    productId,
+    productName,
+    quantity,
+  }: {
+    storeId: string;
+    productId: string;
+    productName?: string | null;
+    quantity: number;
+  }
+) => {
+  const message = `Low stock: ${productName ?? "Product"} (${quantity} left)`;
+
+  for (const role of LOW_STOCK_RECIPIENT_ROLES) {
+    const existingAlert = await dbClient.notification.findFirst({
+      where: {
+        storeId,
+        type: "SYSTEM_ALERT",
+        referenceId: productId,
+        read: false,
+        recipientRole: role,
+      },
+    });
+
+    if (!existingAlert) {
+      await dbClient.notification.create({
+        data: {
+          storeId,
+          type: "SYSTEM_ALERT",
+          message,
+          referenceId: productId,
+          recipientRole: role,
+        },
+      });
+    }
+  }
+};
+
 export const createStock = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
     const { productId, quantity, lowStockLevel } = req.body;
+    const normalizedLowStockLevel = normalizeLowStockLevel(lowStockLevel);
 
     // Validate required fields
     if (!productId || quantity === undefined) {
@@ -66,7 +119,7 @@ export const createStock = async (
         storeId: defaultStore.id,
         productId,
         quantity: Number(quantity),
-        lowStockLevel: lowStockLevel ? Number(lowStockLevel) : 5,
+        lowStockLevel: normalizedLowStockLevel,
       },
       include: {
         product: { include: { brand: true, series: true } },
@@ -83,26 +136,13 @@ export const createStock = async (
       },
     });
 
-    if (stock.quantity < stock.lowStockLevel) {
-      const existingAlert = await prisma.notification.findFirst({
-        where: {
-          storeId: stock.storeId,
-          type: "SYSTEM_ALERT",
-          referenceId: stock.productId,
-          read: false,
-        },
+    if (stock.quantity < normalizedLowStockLevel) {
+      await createLowStockNotifications(prisma, {
+        storeId: stock.storeId,
+        productId: stock.productId,
+        productName: stock.product?.name,
+        quantity: stock.quantity,
       });
-
-      if (!existingAlert) {
-        await prisma.notification.create({
-          data: {
-            storeId: stock.storeId,
-            type: "SYSTEM_ALERT",
-            message: `Low stock: ${stock.product?.name ?? "Product"} (${stock.quantity} left)`,
-            referenceId: stock.productId,
-          },
-        });
-      }
     }
 
     res.status(201).json(stock);
@@ -131,7 +171,7 @@ export const createStockRequest = async (
       return;
     }
 
-    const parsedLowStock = Number.isFinite(Number(lowStockLevel)) ? Number(lowStockLevel) : 5;
+    const parsedLowStock = normalizeLowStockLevel(lowStockLevel);
 
     const product = await prisma.product.findUnique({
       where: { id: productId },
@@ -256,6 +296,8 @@ export const approveStockRequest = async (
     }
 
     const approvedRequest = await prisma.$transaction(async (tx) => {
+      const requestLowStockLevel = normalizeLowStockLevel(request.lowStockLevel);
+
       const existingStock = await tx.stock.findUnique({
         where: {
           storeId_productId: {
@@ -272,7 +314,7 @@ export const approveStockRequest = async (
           where: { id: existingStock.id },
           data: {
             quantity: request.quantity,
-            lowStockLevel: request.lowStockLevel,
+            lowStockLevel: requestLowStockLevel,
           },
           include: { product: true, store: true },
         });
@@ -292,7 +334,7 @@ export const approveStockRequest = async (
             storeId: request.storeId,
             productId: request.productId,
             quantity: request.quantity,
-            lowStockLevel: request.lowStockLevel,
+            lowStockLevel: requestLowStockLevel,
           },
           include: { product: true, store: true },
         });
@@ -306,26 +348,13 @@ export const approveStockRequest = async (
         });
       }
 
-      if (stock && stock.quantity < stock.lowStockLevel) {
-        const existingAlert = await tx.notification.findFirst({
-          where: {
-            storeId: stock.storeId,
-            type: "SYSTEM_ALERT",
-            referenceId: stock.productId,
-            read: false,
-          },
+      if (stock && stock.quantity < requestLowStockLevel) {
+        await createLowStockNotifications(tx, {
+          storeId: stock.storeId,
+          productId: stock.productId,
+          productName: stock.product?.name,
+          quantity: stock.quantity,
         });
-
-        if (!existingAlert) {
-          await tx.notification.create({
-            data: {
-              storeId: stock.storeId,
-              type: "SYSTEM_ALERT",
-              message: `Low stock: ${stock.product?.name ?? "Product"} (${stock.quantity} left)`,
-              referenceId: stock.productId,
-            },
-          });
-        }
       }
 
       return tx.stockRequest.update({
@@ -408,16 +437,36 @@ export const getStockByStore = async (
     const { storeId } = req.query;
     const search = req.query.search?.toString();
 
-    if (!storeId) {
-      res.status(400).json({ message: "Store ID is required" });
-      return;
+    let resolvedStoreId = storeId?.toString();
+
+    if (!resolvedStoreId) {
+      const stores = await prisma.store.findMany({ take: 2, select: { id: true } });
+      if (stores.length === 1) {
+        resolvedStoreId = stores[0].id;
+      } else if (stores.length === 0) {
+        const defaultStore = await getOrCreateDefaultStore();
+        resolvedStoreId = defaultStore.id;
+      } else {
+        res.status(400).json({ message: "storeId is required when multiple stores exist" });
+        return;
+      }
     }
+
+    await prisma.stock.updateMany({
+      where: {
+        storeId: resolvedStoreId,
+        lowStockLevel: { lte: 0 },
+      },
+      data: {
+        lowStockLevel: DEFAULT_LOW_STOCK_LEVEL,
+      },
+    });
 
     const stocks = await prisma.stock.findMany({
       where: {
-        storeId: storeId.toString(),
+        storeId: resolvedStoreId,
         ...(search && {
-          product: { name: { contains: search } },
+          product: { name: { contains: search, mode: "insensitive" } },
         }),
       },
       include: {
@@ -426,7 +475,24 @@ export const getStockByStore = async (
       },
     });
 
-    res.json(stocks);
+    // Use an effective threshold to avoid treating 0/invalid values as "no threshold"
+    const normalizedStocks = stocks.map((stock) => ({
+      ...stock,
+      lowStockLevel: normalizeLowStockLevel(stock.lowStockLevel),
+    }));
+
+    for (const stock of normalizedStocks) {
+      if (stock.quantity < stock.lowStockLevel) {
+        await createLowStockNotifications(prisma, {
+          storeId: stock.storeId,
+          productId: stock.productId,
+          productName: stock.product?.name,
+          quantity: stock.quantity,
+        });
+      }
+    }
+
+    res.json(normalizedStocks);
   } catch (error) {
     console.error("getStockByStore error:", error);
     res.status(500).json({ message: "Error retrieving stock" });
@@ -467,6 +533,8 @@ export const updateStock = async (
   try {
     const { id } = req.params;
     const { quantity, lowStockLevel } = req.body;
+    const normalizedIncomingLowStockLevel =
+      lowStockLevel !== undefined ? normalizeLowStockLevel(lowStockLevel) : undefined;
 
     // Get old stock data before updating
     const oldStock = await prisma.stock.findUnique({
@@ -482,7 +550,9 @@ export const updateStock = async (
       where: { id },
       data: {
         ...(quantity !== undefined && { quantity }),
-        ...(lowStockLevel !== undefined && { lowStockLevel }),
+        ...(normalizedIncomingLowStockLevel !== undefined && {
+          lowStockLevel: normalizedIncomingLowStockLevel,
+        }),
       },
       include: { product: true, store: true },
     });
@@ -499,33 +569,29 @@ export const updateStock = async (
       });
     }
 
+    const previousLowStockLevel = normalizeLowStockLevel(oldStock.lowStockLevel);
+    const currentLowStockLevel =
+      normalizedIncomingLowStockLevel !== undefined
+        ? normalizedIncomingLowStockLevel
+        : previousLowStockLevel;
+
     const shouldNotify =
-      oldStock.quantity >= oldStock.lowStockLevel &&
-      stock.quantity < stock.lowStockLevel;
+      oldStock.quantity >= previousLowStockLevel &&
+      stock.quantity < currentLowStockLevel;
 
     if (shouldNotify) {
-      const existingAlert = await prisma.notification.findFirst({
-        where: {
-          storeId: stock.storeId,
-          type: "SYSTEM_ALERT",
-          referenceId: stock.productId,
-          read: false,
-        },
+      await createLowStockNotifications(prisma, {
+        storeId: stock.storeId,
+        productId: stock.productId,
+        productName: stock.product?.name,
+        quantity: stock.quantity,
       });
-
-      if (!existingAlert) {
-        await prisma.notification.create({
-          data: {
-            storeId: stock.storeId,
-            type: "SYSTEM_ALERT",
-            message: `Low stock: ${stock.product?.name ?? "Product"} (${stock.quantity} left)`,
-            referenceId: stock.productId,
-          },
-        });
-      }
     }
 
-    res.json(stock);
+    res.json({
+      ...stock,
+      lowStockLevel: currentLowStockLevel,
+    });
   } catch (error) {
     console.error("updateStock error:", error);
     res.status(500).json({ message: "Error updating stock" });
@@ -556,9 +622,10 @@ export const getLowStockProducts = async (
     });
 
     // Filter for low stock items (quantity < lowStockLevel)
-    const lowStockItems = stocks.filter((stock: { quantity: number; lowStockLevel: number }) =>
-      stock.quantity < stock.lowStockLevel
-    );
+    const lowStockItems = stocks.filter((stock: { quantity: number; lowStockLevel: number }) => {
+      const effectiveLowStockLevel = normalizeLowStockLevel(stock.lowStockLevel);
+      return stock.quantity < effectiveLowStockLevel;
+    });
 
     res.json(lowStockItems);
   } catch (error) {
@@ -628,7 +695,9 @@ export const getStockReport = async (
       const inventoryValue = stock.quantity * stock.product.purchasePrice;
       totalValue += inventoryValue;
 
-      if (stock.quantity < stock.lowStockLevel) {
+      const effectiveLowStockLevel = normalizeLowStockLevel(stock.lowStockLevel);
+
+      if (stock.quantity < effectiveLowStockLevel) {
         lowStockCount++;
       }
 

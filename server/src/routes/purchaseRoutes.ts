@@ -1,6 +1,6 @@
 import express from "express";
 import * as purchaseController from "../controllers/purchaseController";
-import { authMiddleware, accountantOnly, adminOrAccountant } from "../middleware/auth";
+import { authMiddleware, adminOrAccountant } from "../middleware/auth";
 
 const router = express.Router();
 
@@ -11,9 +11,9 @@ router.use(authMiddleware);
 router.get("/", adminOrAccountant, purchaseController.getPurchases);
 router.get("/:id", adminOrAccountant, purchaseController.getPurchaseById);
 
-// WRITE operations - Accountant only
-router.post("/", accountantOnly, purchaseController.createPurchase);
-router.put("/:id", accountantOnly, purchaseController.updatePurchase);
-router.delete("/:id", accountantOnly, purchaseController.deletePurchase);
+// WRITE operations - Admin and Accountant
+router.post("/", adminOrAccountant, purchaseController.createPurchase);
+router.put("/:id", adminOrAccountant, purchaseController.updatePurchase);
+router.delete("/:id", adminOrAccountant, purchaseController.deletePurchase);
 
 export default router;

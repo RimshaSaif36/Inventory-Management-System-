@@ -230,16 +230,6 @@ const Sidebar = () => {
           />
         )}
 
-        {/* Employees - Admin only */}
-        {isAdmin && (
-          <SidebarLink
-            href="/employees"
-            icon={User}
-            label="Employees"
-            isCollapsed={isSidebarCollapsed}
-          />
-        )}
-
         {/* Invoices - Admin & Accountant */}
         {(isAdmin || isAccountant) && (
           <SidebarLink

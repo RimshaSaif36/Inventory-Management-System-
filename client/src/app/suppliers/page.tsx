@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import { useAppSelector } from "@/app/redux";
 import { apiClient } from "@/lib/apiClient";
 
@@ -68,13 +69,17 @@ export default function SuppliersPage() {
       try {
         await apiClient.delete(`/suppliers/${id}`);
         fetchSuppliers();
-      } catch (error) {
+      } catch (error: any) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          fetchSuppliers();
+          return;
+        }
         console.error("Error deleting supplier:", error);
       }
     }
   };
 
-  const canEdit = user?.role === "ACCOUNTANT";
+  const canEdit = user?.role === "ACCOUNTANT" || user?.role === "ADMIN";
 
   return (
     <div className="p-6">

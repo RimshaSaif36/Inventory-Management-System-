@@ -1,348 +1,363 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import axios from "axios";
 import { useAppSelector } from "@/app/redux";
 import { apiClient } from "@/lib/apiClient";
 import {
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
+    Cell,
+    Legend,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
 } from "recharts";
 
 interface Expense {
-  id: string;
-  category: string;
-  description?: string;
-  amount: number;
-  date: string;
+    id: string;
+    category: string;
+    description?: string;
+    amount: number;
+    date: string;
 }
 
 interface CategorySummary {
-  category: string;
-  totalAmount: number;
-  count: number;
+    category: string;
+    totalAmount: number;
+    count: number;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Rent: "#4F46E5",
-  Utilities: "#10B981",
-  Salaries: "#F59E0B",
-  Office: "#EF4444",
-  Transport: "#8B5CF6",
-  Maintenance: "#EC4899",
-  Other: "#6B7280",
+    Rent: "#4F46E5",
+    Utilities: "#10B981",
+    Salaries: "#F59E0B",
+    Office: "#EF4444",
+    Transport: "#8B5CF6",
+    Maintenance: "#EC4899",
+    Other: "#6B7280",
 };
 
 const normalizeAmountInput = (value: string) => {
-  let normalized = value.replace(/,/g, ".").replace(/[^\d.]/g, "");
-  const firstDotIndex = normalized.indexOf(".");
+    let normalized = value.replace(/,/g, ".").replace(/[^\d.]/g, "");
+    const firstDotIndex = normalized.indexOf(".");
 
-  if (firstDotIndex !== -1) {
-    normalized =
-      normalized.slice(0, firstDotIndex + 1) +
-      normalized.slice(firstDotIndex + 1).replace(/\./g, "");
-  }
+    if (firstDotIndex !== -1) {
+        normalized =
+            normalized.slice(0, firstDotIndex + 1) +
+            normalized.slice(firstDotIndex + 1).replace(/\./g, "");
+    }
 
-  return normalized;
+    return normalized;
 };
 
 const ExpensesClient = () => {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [categorySummary, setCategorySummary] = useState<CategorySummary[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [categorySummary, setCategorySummary] = useState<CategorySummary[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [activeIndex, setActiveIndex] = useState(0);
 
-  const [formCategory, setFormCategory] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formAmount, setFormAmount] = useState("");
-  const [formDate, setFormDate] = useState(new Date().toISOString().split("T")[0]);
+    const [formCategory, setFormCategory] = useState("");
+    const [formDescription, setFormDescription] = useState("");
+    const [formAmount, setFormAmount] = useState("");
+    const [formDate, setFormDate] = useState(new Date().toISOString().split("T")[0]);
 
-  const user = useAppSelector((state) => state.user.currentUser);
-  const storeId = user?.storeId || "";
+    const user = useAppSelector((state) => state.user.currentUser);
+    const storeId = user?.storeId || "";
 
-  const fetchExpenses = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: Record<string, string> = {};
-      if (storeId) params.storeId = storeId;
-      const response = await apiClient.get("/expenses", { params });
-      setExpenses(response.data.data || []);
-    } catch (error) {
-      console.error("Error fetching expenses:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [storeId]);
+    const fetchExpenses = useCallback(async () => {
+        setLoading(true);
+        try {
+            const params: Record<string, string> = {};
+            if (storeId) params.storeId = storeId;
+            const response = await apiClient.get("/expenses", { params });
+            setExpenses(response.data.data || []);
+        } catch (error) {
+            console.error("Error fetching expenses:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [storeId]);
 
-  const fetchCategorySummary = useCallback(async () => {
-    try {
-      const params: Record<string, string> = {};
-      if (storeId) params.storeId = storeId;
-      const response = await apiClient.get("/expenses/by-category", { params });
-      setCategorySummary(response.data || []);
-    } catch (error) {
-      console.error("Error fetching expense summary:", error);
-    }
-  }, [storeId]);
+    const fetchCategorySummary = useCallback(async () => {
+        try {
+            const params: Record<string, string> = {};
+            if (storeId) params.storeId = storeId;
+            const response = await apiClient.get("/expenses/by-category", { params });
+            setCategorySummary(response.data || []);
+        } catch (error) {
+            console.error("Error fetching expense summary:", error);
+        }
+    }, [storeId]);
 
-  useEffect(() => {
-    fetchExpenses();
-    fetchCategorySummary();
-  }, [storeId, fetchExpenses, fetchCategorySummary]);
+    useEffect(() => {
+        fetchExpenses();
+        fetchCategorySummary();
+    }, [storeId, fetchExpenses, fetchCategorySummary]);
 
-  const resetForm = () => {
-    setFormCategory("");
-    setFormDescription("");
-    setFormAmount("");
-    setFormDate(new Date().toISOString().split("T")[0]);
-    setEditingId(null);
-  };
+    const resetForm = () => {
+        setFormCategory("");
+        setFormDescription("");
+        setFormAmount("");
+        setFormDate(new Date().toISOString().split("T")[0]);
+        setEditingId(null);
+    };
 
-  const handleSubmit = async () => {
-    const parsedAmount = Number(formAmount);
-    if (
-      !formCategory ||
-      !formAmount.trim() ||
-      !Number.isFinite(parsedAmount) ||
-      parsedAmount <= 0
-    ) {
-      alert("Category and valid amount are required");
-      return;
-    }
-    try {
-      const payload = {
-        storeId: storeId || undefined,
-        category: formCategory,
-        description: formDescription || undefined,
-        amount: parsedAmount,
-        date: formDate,
-      };
-      if (editingId) {
-        await apiClient.put(`/expenses/${editingId}`, payload);
-      } else {
-        await apiClient.post("/expenses", payload);
-      }
-      setShowModal(false);
-      resetForm();
-      fetchExpenses();
-      fetchCategorySummary();
-    } catch (error: any) {
-      console.error("Error saving expense:", error);
-      alert(error?.response?.data?.message || "Error saving expense");
-    }
-  };
+    const handleSubmit = async () => {
+        const parsedAmount = Number(formAmount);
+        if (
+            !formCategory ||
+            !formAmount.trim() ||
+            !Number.isFinite(parsedAmount) ||
+            parsedAmount <= 0
+        ) {
+            alert("Category and valid amount are required");
+            return;
+        }
+        try {
+            const payload = {
+                storeId: storeId || undefined,
+                category: formCategory,
+                description: formDescription || undefined,
+                amount: parsedAmount,
+                date: formDate,
+            };
+            if (editingId) {
+                await apiClient.put(`/expenses/${editingId}`, payload);
+            } else {
+                await apiClient.post("/expenses", payload);
+            }
+            setShowModal(false);
+            resetForm();
+            fetchExpenses();
+            fetchCategorySummary();
+        } catch (error: any) {
+            console.error("Error saving expense:", error);
+            alert(error?.response?.data?.message || "Error saving expense");
+        }
+    };
 
-  const handleEdit = (exp: Expense) => {
-    setEditingId(exp.id);
-    setFormCategory(exp.category);
-    setFormDescription(exp.description || "");
-    setFormAmount(exp.amount.toString());
-    setFormDate(exp.date.split("T")[0]);
-    setShowModal(true);
-  };
+    const handleEdit = (exp: Expense) => {
+        setEditingId(exp.id);
+        setFormCategory(exp.category);
+        setFormDescription(exp.description || "");
+        setFormAmount(exp.amount.toString());
+        setFormDate(exp.date.split("T")[0]);
+        setShowModal(true);
+    };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this expense?")) return;
-    try {
-      await apiClient.delete(`/expenses/${id}`);
-      fetchExpenses();
-      fetchCategorySummary();
-    } catch (error) {
-      console.error("Error deleting expense:", error);
-    }
-  };
+    const handleDelete = async (id: string) => {
+        if (!confirm("Delete this expense?")) return;
+        try {
+            await apiClient.delete(`/expenses/${id}`);
+            fetchExpenses();
+            fetchCategorySummary();
+        } catch (error: any) {
+            if (axios.isAxiosError(error)) {
+                const status = error.response?.status;
+                const message = error.response?.data?.message as string | undefined;
 
-  const pieData = categorySummary.map((c) => ({
-    name: c.category,
-    amount: c.totalAmount,
-    color: CATEGORY_COLORS[c.category] || `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-  }));
+                if (status === 404) {
+                    fetchExpenses();
+                    fetchCategorySummary();
+                    return;
+                }
 
-  const totalExpense = expenses.reduce((s, e) => s + e.amount, 0);
+                alert(message || "Error deleting expense");
+                return;
+            }
 
-  return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Expenses</h1>
-          <p className="text-sm text-gray-500">Track and manage store expenses</p>
-        </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg"
-        >
-          Add Expense
-        </button>
-      </div>
+            alert("Error deleting expense");
+        }
+    };
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white shadow rounded-lg p-4">
-          <h3 className="text-sm text-gray-500">Total Expenses</h3>
-          <p className="text-2xl font-bold">PKR {totalExpense.toFixed(2)}</p>
-        </div>
-        <div className="bg-white shadow rounded-lg p-4">
-          <h3 className="text-sm text-gray-500">Categories</h3>
-          <p className="text-2xl font-bold">{categorySummary.length}</p>
-        </div>
-        <div className="bg-white shadow rounded-lg p-4">
-          <h3 className="text-sm text-gray-500">Total Entries</h3>
-          <p className="text-2xl font-bold">{expenses.length}</p>
-        </div>
-      </div>
+    const pieData = categorySummary.map((c) => ({
+        name: c.category,
+        amount: c.totalAmount,
+        color: CATEGORY_COLORS[c.category] || `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+    }));
 
-      {pieData.length > 0 && (
-        <div className="bg-white shadow rounded-lg p-4 mb-6">
-          <h3 className="font-semibold mb-2">Expense by Category</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                label
-                outerRadius={120}
-                dataKey="amount"
-                onMouseEnter={(_, index) => setActiveIndex(index)}
-              >
-                {pieData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={index === activeIndex ? "rgb(29, 78, 216)" : entry.color}
-                  />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+    const totalExpense = expenses.reduce((s, e) => s + e.amount, 0);
 
-      {loading ? (
-        <div>Loading...</div>
-      ) : (
-        <div className="overflow-x-auto bg-white shadow rounded-lg">
-          <table className="w-full border-collapse">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border p-2 text-left">Date</th>
-                <th className="border p-2 text-left">Category</th>
-                <th className="border p-2 text-left">Description</th>
-                <th className="border p-2 text-right">Amount</th>
-                <th className="border p-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((exp) => (
-                <tr key={exp.id} className="hover:bg-gray-50">
-                  <td className="border p-2">{new Date(exp.date).toLocaleDateString()}</td>
-                  <td className="border p-2">{exp.category}</td>
-                  <td className="border p-2">{exp.description || "-"}</td>
-                  <td className="border p-2 text-right">PKR {exp.amount.toFixed(2)}</td>
-                  <td className="border p-2 text-center space-x-1">
-                    <button
-                      onClick={() => handleEdit(exp)}
-                      className="bg-yellow-500 text-white px-2 py-1 rounded text-xs"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(exp.id)}
-                      className="bg-red-500 text-white px-2 py-1 rounded text-xs"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {expenses.length === 0 && (
-                <tr><td colSpan={5} className="border p-4 text-center text-gray-500">No expenses found</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">
-              {editingId ? "Edit Expense" : "Add Expense"}
-            </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Category *</label>
-                <select
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                  className="border px-3 py-2 rounded w-full"
+    return (
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h1 className="text-3xl font-bold">Expenses</h1>
+                    <p className="text-sm text-gray-500">Track and manage store expenses</p>
+                </div>
+                <button
+                    onClick={() => { resetForm(); setShowModal(true); }}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg"
                 >
-                  <option value="">Select Category</option>
-                  {["Rent", "Utilities", "Salaries", "Office", "Transport", "Maintenance", "Other"].map(
-                    (cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    )
-                  )}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
-                <input
-                  type="text"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className="border px-3 py-2 rounded w-full"
-                  placeholder="Optional description"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Amount *</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={formAmount}
-                  onChange={(e) => setFormAmount(normalizeAmountInput(e.target.value))}
-                  autoComplete="off"
-                  className="border px-3 py-2 rounded w-full"
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Date</label>
-                <input
-                  type="date"
-                  value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  className="border px-3 py-2 rounded w-full"
-                />
-              </div>
+                    Add Expense
+                </button>
             </div>
 
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                onClick={() => { setShowModal(false); resetForm(); }}
-                className="bg-gray-300 px-4 py-2 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="bg-blue-600 text-white px-4 py-2 rounded"
-              >
-                {editingId ? "Update" : "Add"} Expense
-              </button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white shadow rounded-lg p-4">
+                    <h3 className="text-sm text-gray-500">Total Expenses</h3>
+                    <p className="text-2xl font-bold">PKR {totalExpense.toFixed(2)}</p>
+                </div>
+                <div className="bg-white shadow rounded-lg p-4">
+                    <h3 className="text-sm text-gray-500">Categories</h3>
+                    <p className="text-2xl font-bold">{categorySummary.length}</p>
+                </div>
+                <div className="bg-white shadow rounded-lg p-4">
+                    <h3 className="text-sm text-gray-500">Total Entries</h3>
+                    <p className="text-2xl font-bold">{expenses.length}</p>
+                </div>
             </div>
-          </div>
+
+            {pieData.length > 0 && (
+                <div className="bg-white shadow rounded-lg p-4 mb-6">
+                    <h3 className="font-semibold mb-2">Expense by Category</h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                            <Pie
+                                data={pieData}
+                                cx="50%"
+                                cy="50%"
+                                label
+                                outerRadius={120}
+                                dataKey="amount"
+                                onMouseEnter={(_, index) => setActiveIndex(index)}
+                            >
+                                {pieData.map((entry, index) => (
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={index === activeIndex ? "rgb(29, 78, 216)" : entry.color}
+                                    />
+                                ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
+
+            {loading ? (
+                <div>Loading...</div>
+            ) : (
+                <div className="overflow-x-auto bg-white shadow rounded-lg">
+                    <table className="w-full border-collapse">
+                        <thead className="bg-gray-100">
+                            <tr>
+                                <th className="border p-2 text-left">Date</th>
+                                <th className="border p-2 text-left">Category</th>
+                                <th className="border p-2 text-left">Description</th>
+                                <th className="border p-2 text-right">Amount</th>
+                                <th className="border p-2">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {expenses.map((exp) => (
+                                <tr key={exp.id} className="hover:bg-gray-50">
+                                    <td className="border p-2">{new Date(exp.date).toLocaleDateString()}</td>
+                                    <td className="border p-2">{exp.category}</td>
+                                    <td className="border p-2">{exp.description || "-"}</td>
+                                    <td className="border p-2 text-right">PKR {exp.amount.toFixed(2)}</td>
+                                    <td className="border p-2 text-center space-x-1">
+                                        <button
+                                            onClick={() => handleEdit(exp)}
+                                            className="bg-yellow-500 text-white px-2 py-1 rounded text-xs"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(exp.id)}
+                                            className="bg-red-500 text-white px-2 py-1 rounded text-xs"
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {expenses.length === 0 && (
+                                <tr><td colSpan={5} className="border p-4 text-center text-gray-500">No expenses found</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {showModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg w-full max-w-md">
+                        <h2 className="text-xl font-bold mb-4">
+                            {editingId ? "Edit Expense" : "Add Expense"}
+                        </h2>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Category *</label>
+                                <select
+                                    value={formCategory}
+                                    onChange={(e) => setFormCategory(e.target.value)}
+                                    className="border px-3 py-2 rounded w-full"
+                                >
+                                    <option value="">Select Category</option>
+                                    {["Rent", "Utilities", "Salaries", "Office", "Transport", "Maintenance", "Other"].map(
+                                        (cat) => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        )
+                                    )}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Description</label>
+                                <input
+                                    type="text"
+                                    value={formDescription}
+                                    onChange={(e) => setFormDescription(e.target.value)}
+                                    className="border px-3 py-2 rounded w-full"
+                                    placeholder="Optional description"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Amount *</label>
+                                <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={formAmount}
+                                    onChange={(e) => setFormAmount(normalizeAmountInput(e.target.value))}
+                                    autoComplete="off"
+                                    className="border px-3 py-2 rounded w-full"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Date</label>
+                                <input
+                                    type="date"
+                                    value={formDate}
+                                    onChange={(e) => setFormDate(e.target.value)}
+                                    className="border px-3 py-2 rounded w-full"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 mt-6">
+                            <button
+                                onClick={() => { setShowModal(false); resetForm(); }}
+                                className="bg-gray-300 px-4 py-2 rounded"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                className="bg-blue-600 text-white px-4 py-2 rounded"
+                            >
+                                {editingId ? "Update" : "Add"} Expense
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 };
 
 export default ExpensesClient;

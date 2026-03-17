@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { AuthenticatedRequest } from "../middleware/auth";
+import { Prisma } from "@prisma/client";
 
 export const getExpenses = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -132,21 +133,48 @@ export const createExpense = async (req: Request, res: Response): Promise<void> 
 
 export const updateExpense = async (req: Request, res: Response): Promise<void> => {
   try {
+    const requestUser = req as AuthenticatedRequest;
     const { id } = req.params;
     const { category, description, amount, date } = req.body;
 
+    if (!id) {
+      res.status(400).json({ message: "Expense ID is required" });
+      return;
+    }
+
+    const parsedAmount = amount !== undefined ? Number(amount) : undefined;
+    if (parsedAmount !== undefined && (!Number.isFinite(parsedAmount) || parsedAmount <= 0)) {
+      res.status(400).json({ message: "Amount must be a valid positive number" });
+      return;
+    }
+
+    const where: any = { id };
+    if (requestUser.user?.role !== "ADMIN" && requestUser.user?.storeId) {
+      where.storeId = requestUser.user.storeId;
+    }
+
+    const existingExpense = await prisma.expense.findFirst({ where, select: { id: true } });
+    if (!existingExpense) {
+      res.status(404).json({ message: "Expense not found" });
+      return;
+    }
+
     const expense = await prisma.expense.update({
-      where: { id },
+      where: { id: existingExpense.id },
       data: {
         ...(category && { category }),
         ...(description !== undefined && { description }),
-        ...(amount && { amount: parseFloat(amount) }),
+        ...(parsedAmount !== undefined && { amount: parsedAmount }),
         ...(date && { date: new Date(date) }),
       },
     });
 
     res.json(expense);
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      res.status(404).json({ message: "Expense not found" });
+      return;
+    }
     console.error("updateExpense error:", error);
     res.status(500).json({ message: "Error updating expense" });
   }
@@ -154,10 +182,32 @@ export const updateExpense = async (req: Request, res: Response): Promise<void> 
 
 export const deleteExpense = async (req: Request, res: Response): Promise<void> => {
   try {
+    const requestUser = req as AuthenticatedRequest;
     const { id } = req.params;
-    await prisma.expense.delete({ where: { id } });
+
+    if (!id) {
+      res.status(400).json({ message: "Expense ID is required" });
+      return;
+    }
+
+    const where: any = { id };
+    if (requestUser.user?.role !== "ADMIN" && requestUser.user?.storeId) {
+      where.storeId = requestUser.user.storeId;
+    }
+
+    const existingExpense = await prisma.expense.findFirst({ where, select: { id: true } });
+    if (!existingExpense) {
+      res.status(404).json({ message: "Expense not found" });
+      return;
+    }
+
+    await prisma.expense.delete({ where: { id: existingExpense.id } });
     res.json({ message: "Expense deleted successfully" });
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      res.status(404).json({ message: "Expense not found" });
+      return;
+    }
     console.error("deleteExpense error:", error);
     res.status(500).json({ message: "Error deleting expense" });
   }

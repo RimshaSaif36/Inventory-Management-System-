@@ -107,7 +107,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 /* SERVER */
-const port = Number(process.env.PORT) || 5000;
+const port = Number(process.env.PORT) || 3000;
 const server = app.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
 });

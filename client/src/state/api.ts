@@ -404,7 +404,7 @@ export const api = createApi({
       }),
       invalidatesTags: ["Products"],
     }),
-    updateProduct: build.mutation<Product, { productId: string; data: Partial<NewProduct> }>({
+    updateProduct: build.mutation<Product, { productId: string; data: Partial<NewProduct> & { totalStock?: number; lowStockLevel?: number; storeId?: string } }>({
       query: ({ productId, data }) => ({
         url: `/products/${productId}`,
         method: "PUT",

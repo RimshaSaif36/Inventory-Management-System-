@@ -381,6 +381,7 @@ const Inventory = () => {
           setEditingStockId(null);
         } else {
           await createStock({
+            storeId,
             productId: stockFormData.productId,
             quantity: stockFormData.quantity,
             lowStockLevel: stockFormData.lowStockLevel,

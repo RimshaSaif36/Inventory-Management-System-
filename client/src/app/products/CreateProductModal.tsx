@@ -9,6 +9,7 @@ type ProductFormData = {
   sellingPrice: number;
   brandId: string;
   seriesId: string;
+  imageUrl?: string;
   imageFile?: File | null;
 };
 

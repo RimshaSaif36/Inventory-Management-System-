@@ -53,7 +53,7 @@ export default function CustomersPage() {
       } else {
         await apiClient.post("/customers", formData);
       }
-      setFormData({ name: "", phone: "", email: "", customerType: "POS" });
+      setFormData({ name: "", phone: "", email: "", address: "", customerType: "POS" });
       setEditingId(null);
       setShowModal(false);
       fetchCustomers();

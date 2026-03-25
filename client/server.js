@@ -1,31 +1,40 @@
-const { createServer } = require('http');
-const { parse } = require('url');
-const next = require('next');
+#!/usr/bin/env node
 
-const dev = process.env.NODE_ENV !== 'production';
+const fs = require('fs');
+const path = require('path');
+const http = require('http');
+
+// Check if .next build exists
+const nextBuildPath = path.join(__dirname, '.next');
+if (!fs.existsSync(nextBuildPath)) {
+    console.error('ERROR: .next build directory not found!');
+    console.error('You must build first: npm run build');
+    process.exit(1);
+}
+
+// Use Next.js standalone server
+const NextServer = require('next/dist/server/next-server').default;
+const { IncomingMessage, ServerResponse } = require('http');
+
+const nextServer = new NextServer({
+    dir: __dirname,
+    isDebug: process.env.NODE_ENV !== 'production',
+    isDev: process.env.NODE_ENV !== 'production',
+});
+
+const handle = nextServer.getRequestHandler();
 const port = Number(process.env.PORT || 3000);
 const hostname = '0.0.0.0';
 
-const app = next({
-    dev,
-    dir: __dirname,
-    hostname,
-    port,
-});
-
-const handle = app.getRequestHandler();
-
-app
-    .prepare()
+nextServer.prepare()
     .then(() => {
-        createServer((req, res) => {
-            const parsedUrl = parse(req.url, true);
-            handle(req, res, parsedUrl);
+        http.createServer((req, res) => {
+            handle(req, res);
         }).listen(port, hostname, () => {
-            console.log(`Next frontend running on ${hostname}:${port}`);
+            console.log(`Next frontend running on http://${hostname}:${port}`);
         });
     })
-    .catch((error) => {
-        console.error('Failed to start Next frontend server:', error);
+    .catch((err) => {
+        console.error('Failed to start Next server:', err);
         process.exit(1);
     });
